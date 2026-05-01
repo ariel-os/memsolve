@@ -1,0 +1,15 @@
+[package]
+name = "rommel"
+version = "0.1.0"
+edition = "2024"
+description = "ROM linker script generator"
+homepage = "https://codeberg.org/bergzand/rommel/"
+repository = "https://codeberg.org/bergzand/rommel/"
+license = "MIT OR Apache-2.0"
+categories = ["embedded"]
+
+[dependencies]
+uom = { version = "0.38.0", features = ["si", "u64"] }
+
+[features]
+serde = ["uom/serde"]
