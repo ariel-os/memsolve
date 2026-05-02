@@ -2,7 +2,7 @@
 name = "rommel"
 version = "0.1.0"
 edition = "2024"
-description = "ROM linker script generator"
+description = "ROM memory layout generator for linker script generation"
 homepage = "https://codeberg.org/bergzand/rommel/"
 repository = "https://codeberg.org/bergzand/rommel/"
 license = "MIT OR Apache-2.0"
