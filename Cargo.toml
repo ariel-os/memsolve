@@ -9,7 +9,12 @@ license = "MIT OR Apache-2.0"
 categories = ["embedded"]
 
 [dependencies]
+serde = { version = "1.0.228", optional = true, features = ["derive"] }
 uom = { version = "0.38.0", features = ["si", "u64"] }
 
 [features]
-serde = ["uom/serde"]
+default = ["serde"]
+serde = ["dep:serde", "uom/serde"]
+
+[dev-dependencies]
+yaml_serde = "0.10.4"
