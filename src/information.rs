@@ -25,3 +25,14 @@ where
     }
     Ok(None)
 }
+
+#[cfg(feature = "serde")]
+pub(crate) fn deser_vec_information<'de, D>(d: D) -> Result<Vec<Information>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let l: Vec<String> = Vec::deserialize(d)?;
+    l.into_iter()
+        .map(|s| s.parse::<Information>().map_err(serde::de::Error::custom))
+        .collect()
+}
