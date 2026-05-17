@@ -1,33 +1,41 @@
 //! Memory sections.
-use crate::information::{deser_option_information, Information};
+use std::ops::{Deref, DerefMut, Index};
+
+use crate::information::{Information, deser_option_information};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use uom::si::information::byte;
 
 /// A Memory section.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Section {
-    name: String,
+    pub name: String,
     #[cfg_attr(feature = "serde", serde(default))]
-    boot: bool,
-    pages: Option<u64>,
+    pub(crate) boot: bool,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub(crate) maximize: bool,
+    pub(crate) pages: Option<u64>,
     #[cfg_attr(
         feature = "serde",
         serde(default, deserialize_with = "deser_option_information")
     )]
-    size: Option<Information>,
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, deserialize_with = "deser_option_information")
-    )]
-    address: Option<Information>,
+    pub(crate) size: Option<Information>,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub(crate) address: Option<u64>,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub(crate) relative_pages: i64,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub(crate) section_name: Option<String>,
 }
 
 #[derive(Error, Debug)]
 pub enum SectionError {
     #[error("incorrect section name")]
     InvalidSectionName,
+    #[error("section not completely resolved")]
+    UnresolvedSection,
 }
 
 impl Section {
@@ -41,10 +49,46 @@ impl Section {
         Ok(Self {
             name,
             boot: false,
+            maximize: false,
             pages: None,
             size: None,
             address: None,
+            relative_pages: 0,
+            section_name: None,
         })
+    }
+
+    /// Extends the section with the requirements from another.
+    ///
+    /// boot and maximize are OR'ed between the two instances. number of pages and byte size take
+    /// the maximum of both. Address is ignored unless one instance doesn't have it set.
+    pub fn merge(&mut self, sec: &Self) {
+        self.boot = self.boot || sec.boot;
+        self.maximize = self.maximize || sec.maximize;
+        if let Some(pages) = sec.pages
+            && self.pages.is_none_or(|p| p < pages)
+        {
+            self.pages = Some(pages);
+        }
+        if let Some(size) = sec.size
+            && self.size.is_none_or(|s| s < size)
+        {
+            self.size = Some(size);
+        }
+        if let Some(address) = sec.address
+            && self.address.is_none()
+        {
+            self.address = Some(address);
+        }
+        if self.relative_pages < sec.relative_pages {
+            self.relative_pages = sec.relative_pages;
+        }
+
+        if let Some(section_name) = &sec.section_name
+            && self.section_name.is_none()
+        {
+            self.section_name = Some(section_name.clone());
+        }
     }
 
     /// Set the boot flag.
@@ -53,8 +97,14 @@ impl Section {
         self
     }
 
+    /// Set the maximize flag.
+    pub fn set_maximize(mut self, maximize: bool) -> Self {
+        self.maximize = maximize;
+        self
+    }
+
     /// Set the minimum number of pages for this section.
-    pub fn num_pages(mut self, pages: u64) -> Self {
+    pub fn set_pages(mut self, pages: u64) -> Self {
         self.pages = Some(pages);
         self
     }
@@ -78,8 +128,22 @@ impl Section {
     }
 
     /// Set the exact address for this section.
-    pub fn set_address(mut self, address: impl Into<Information>) -> Self {
-        self.address = Some(address.into());
+    pub fn set_address(mut self, address: u64) -> Self {
+        self.address = Some(address);
+        self
+    }
+
+    /// Set the number of extra pages required while maximizing this section
+    ///
+    /// Only used when Self::maximize is true
+    pub fn set_relative_pages(mut self, num: i64) -> Self {
+        self.relative_pages = num;
+        self
+    }
+
+    /// clear the number of extra pages required while maximizing this section
+    pub fn clear_relative_pages(mut self) -> Self {
+        self.relative_pages = 0;
         self
     }
 
@@ -89,8 +153,134 @@ impl Section {
         self
     }
 
+    /// The section must be allocated at an exact address.
     pub fn is_fixed(&self) -> bool {
         self.boot || self.address.is_some()
+    }
+
+    pub fn pages_required(&self, page_size: Information) -> u64 {
+        let Some(size) = self.size else {
+            return self.pages.unwrap_or(0);
+        };
+        size.get::<byte>().div_ceil(page_size.get::<byte>())
+    }
+
+    /// The section location is fully defined
+    pub fn is_resolved(&self) -> bool {
+        self.address.is_some() && self.pages.is_some() && self.size.is_some() && !self.maximize
+    }
+
+    pub fn needs_maximizing(&self) -> bool {
+        self.maximize
+    }
+
+    pub fn needs_allocating(&self) -> bool {
+        !self.maximize && self.address.is_none()
+    }
+
+    pub(crate) fn as_resolved(&self) -> Result<ResolvedSection, SectionError> {
+        let (Some(pages), Some(size), Some(address)) = (self.pages, self.size, self.address) else {
+            return Err(SectionError::UnresolvedSection);
+        };
+        Ok(ResolvedSection {
+            name: self.name.clone(),
+            pages,
+            size,
+            address,
+            section_name: self.section_name.as_ref().unwrap_or(&self.name).clone(),
+        })
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ResolvedLayout {
+    sections: Vec<ResolvedSection>,
+}
+
+impl ResolvedLayout {
+    pub fn extend(&mut self, extend: impl Iterator<Item = ResolvedSection>) {
+        self.sections.extend(extend)
+    }
+
+    pub fn into_memory(&self) -> ld_memory::Memory {
+        let mut memory = ld_memory::Memory::new();
+        for s in self.sections.iter() {
+            memory = memory.add_section(s.as_memory_section());
+        }
+        memory
+    }
+}
+
+impl From<Vec<ResolvedSection>> for ResolvedLayout {
+    fn from(value: Vec<ResolvedSection>) -> Self {
+        Self { sections: value }
+    }
+}
+
+impl Index<usize> for ResolvedLayout {
+    type Output = ResolvedSection;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.sections.index(index)
+    }
+}
+
+impl Deref for ResolvedLayout {
+    type Target = [ResolvedSection];
+
+    fn deref(&self) -> &Self::Target {
+        self.sections.deref()
+    }
+}
+
+impl DerefMut for ResolvedLayout {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.sections.deref_mut()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResolvedSection {
+    pub(crate) name: String,
+    pub(crate) pages: u64,
+    pub(crate) size: Information,
+    pub(crate) address: u64,
+    pub(crate) section_name: String,
+}
+
+impl ResolvedSection {
+    pub(crate) fn new(
+        name: String,
+        pages: u64,
+        size: Information,
+        address: u64,
+        section_name: Option<String>,
+    ) -> Self {
+        let section_name = section_name.unwrap_or(name.clone());
+        Self {
+            name,
+            pages,
+            size,
+            address,
+            section_name,
+        }
+    }
+
+    pub(crate) fn space_between(&self, other: &Self) -> u64 {
+        let (first, second) = if self.address < other.address {
+            (self, other)
+        } else {
+            (other, self)
+        };
+        second.address - first.next_free_address()
+    }
+
+    pub(crate) fn next_free_address(&self) -> u64 {
+        self.address + self.size.get::<byte>()
+    }
+
+    pub fn as_memory_section(&self) -> ld_memory::MemorySection {
+        ld_memory::MemorySection::new(&self.section_name, self.address, self.size.get::<byte>())
     }
 }
 
@@ -119,5 +309,16 @@ mod tests {
         assert!(!section.boot);
         assert_eq!(section.pages, Some(2));
         assert_eq!(section.size, Some(Information::new::<byte>(3 * 1024)));
+    }
+
+    #[test]
+    fn merge() {
+        let mut section = Section::new("t")
+            .unwrap()
+            .set_size(Information::new::<byte>(100));
+        let second = Section::new("t").unwrap().set_pages(1);
+        section.merge(&second);
+        assert_eq!(section.pages, Some(1));
+        assert_eq!(section.size, Some(Information::new::<byte>(100)));
     }
 }

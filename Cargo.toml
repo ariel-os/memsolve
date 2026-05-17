@@ -9,6 +9,9 @@ license = "MIT OR Apache-2.0"
 categories = ["embedded"]
 
 [dependencies]
+itertools = "0.14.0"
+ld-memory = "0.2.9"
+microlp = "0.4.0"
 serde = { version = "1.0.228", optional = true, features = ["derive"] }
 thiserror = "2.0.18"
 uom = { version = "0.38.0", features = ["si", "u64"] }
@@ -18,4 +21,5 @@ default = ["serde"]
 serde = ["dep:serde", "uom/serde"]
 
 [dev-dependencies]
+clap = { version = "4.6.1", features = ["derive"] }
 yaml_serde = "0.10.4"

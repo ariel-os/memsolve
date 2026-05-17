@@ -7,7 +7,7 @@ pub(crate) fn deser_information<'de, D>(d: D) -> Result<Information, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let s: &str = <&str>::deserialize(d)?;
+    let s: String = <String>::deserialize(d)?;
     s.parse::<Information>().map_err(serde::de::Error::custom)
 }
 
