@@ -1,3 +1,4 @@
+#![warn(clippy::pedantic)]
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -41,6 +42,7 @@ pub enum MemoryError {
 }
 
 impl Memory {
+    #[must_use]
     pub fn new(chip: Chip) -> Self {
         Memory {
             chip,
@@ -61,6 +63,7 @@ impl Memory {
         &mut self.layout
     }
 
+    #[must_use]
     pub fn layout(&self) -> &Layout {
         &self.layout
     }
@@ -88,7 +91,7 @@ impl Memory {
             if free_pages == 0 && maximized_sections.clone().count() > 0 {
                 return Err(MemoryError::UnresolvableLayout);
             }
-            let mut maxed_sections = solve_free(maximized_sections.clone(), free_pages)
+            let mut maxed_sections = solve_free(&maximized_sections, free_pages)
                 .map_err(|_| MemoryError::UnresolvableLayout)?;
             let next_free_pages = {
                 let assigned_pages = maxed_sections
@@ -103,7 +106,7 @@ impl Memory {
             maxed_sections.extend(sections.clone().cloned());
 
             let res =
-                solve(&bins, maxed_sections.iter()).map_err(|_| MemoryError::UnresolvableLayout);
+                solve(&bins, &maxed_sections.iter()).map_err(|_| MemoryError::UnresolvableLayout);
             if let Ok(resolved) = res {
                 break resolved;
             }
@@ -116,8 +119,9 @@ impl Memory {
     }
 
     /// Returns true if the memory layout is fully defined.
+    #[must_use]
     pub fn is_resolved(&self) -> bool {
-        self.layout.iter().all(|s| s.is_resolved())
+        self.layout.iter().all(section::Section::is_resolved)
     }
 }
 

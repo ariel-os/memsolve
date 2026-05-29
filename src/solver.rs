@@ -10,7 +10,7 @@ use crate::{
 
 pub(crate) fn solve<'a>(
     bins: &Bin,
-    sections: impl Iterator<Item = &'a Section> + Clone,
+    sections: &(impl Iterator<Item = &'a Section> + Clone),
 ) -> Result<ResolvedLayout, SolverError> {
     let mut problem = Problem::new(OptimizationDirection::Minimize);
     let num_bins = bins.len();
@@ -25,12 +25,12 @@ pub(crate) fn solve<'a>(
             variables[i].push(var);
             bin_constraint.add(var, section.pages.unwrap() as f64);
         }
-        if bin != largest_bin {
+        if bin == largest_bin {
+            problem.add_constraint(bin_constraint, ComparisonOp::Le, bin.num_pages() as f64);
+        } else {
             let free_space = problem.add_integer_var(1.0 * i as f64, (0, bin.num_pages() as i32));
             bin_constraint.add(free_space, 1.0);
             problem.add_constraint(bin_constraint, ComparisonOp::Eq, bin.num_pages() as f64);
-        } else {
-            problem.add_constraint(bin_constraint, ComparisonOp::Le, bin.num_pages() as f64);
         }
     }
 
@@ -93,7 +93,7 @@ pub(crate) fn solve<'a>(
 }
 
 pub(crate) fn solve_free<'a>(
-    sections: impl Iterator<Item = &'a Section> + Clone,
+    sections: &(impl Iterator<Item = &'a Section> + Clone),
     set_pages: u64,
 ) -> Result<Vec<Section>, SolverError> {
     let mut problem = Problem::new(OptimizationDirection::Maximize);
@@ -120,6 +120,8 @@ pub(crate) fn solve_free<'a>(
         problem.add_constraint(relative_constraint, ComparisonOp::Eq, diff as f64);
     }
     let solution = problem.solve()?;
+
+    #[allow(clippy::cast_possible_truncation)]
     Ok(sections
         .clone()
         .enumerate()
@@ -139,7 +141,7 @@ mod tests {
         let sections = (0..5)
             .map(|i| Section::new(format!("test{i}")).unwrap().set_maximize(true))
             .collect::<Vec<_>>();
-        let solved = solve_free(sections.iter(), 5).unwrap();
+        let solved = solve_free(&sections.iter(), 5).unwrap();
         for s in solved {
             assert_eq!(s.pages, Some(1));
         }
@@ -155,7 +157,7 @@ mod tests {
                     .set_relative_pages(-2 + i)
             })
             .collect::<Vec<_>>();
-        let solved = solve_free(sections.iter(), 15).unwrap();
+        let solved = solve_free(&sections.iter(), 15).unwrap();
         for (i, s) in solved.iter().enumerate() {
             assert_eq!(s.pages, Some(1 + i as u64));
         }

@@ -18,12 +18,13 @@ pub struct Layout {
 }
 
 impl Layout {
+    #[must_use]
     pub fn new(sections: Vec<Section>) -> Self {
         Self { sections }
     }
 
     pub fn push(&mut self, section: Section) {
-        self.sections.push(section)
+        self.sections.push(section);
     }
 
     pub(crate) fn resolved_sections(&self) -> impl Iterator<Item = ResolvedSection> + Clone {
@@ -99,14 +100,14 @@ impl Layout {
         self.iter_mut().find(|s| name.eq(&s.name))
     }
 
-    pub fn merge(&mut self, other: Self) {
-        other.iter().for_each(|s| {
+    pub fn merge(&mut self, other: &Self) {
+        for s in other.iter() {
             if let Some(existing) = self.find_mut(&s.name) {
-                existing.merge(s)
+                existing.merge(s);
             } else {
-                self.push(s.clone())
+                self.push(s.clone());
             }
-        })
+        }
     }
 }
 

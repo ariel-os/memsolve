@@ -92,42 +92,49 @@ impl Section {
     }
 
     /// Set the boot flag.
+    #[must_use]
     pub fn set_boot(mut self, boot: bool) -> Self {
         self.boot = boot;
         self
     }
 
     /// Set the maximize flag.
+    #[must_use]
     pub fn set_maximize(mut self, maximize: bool) -> Self {
         self.maximize = maximize;
         self
     }
 
     /// Set the minimum number of pages for this section.
+    #[must_use]
     pub fn set_pages(mut self, pages: u64) -> Self {
         self.pages = Some(pages);
         self
     }
 
     /// Clear the minimum number of pages for this section.
+    #[must_use]
     pub fn clear_pages(mut self) -> Self {
         self.pages = None;
         self
     }
 
     /// Set the minimum size for this section.
+    #[must_use]
     pub fn set_size(mut self, bytes: impl Into<Information>) -> Self {
         self.size = Some(bytes.into());
         self
     }
 
     /// Clear the minimum size for this section.
+    #[must_use]
     pub fn clear_size(mut self) -> Self {
         self.size = None;
         self
     }
 
     /// Set the exact address for this section.
+    #[must_use]
     pub fn set_address(mut self, address: u64) -> Self {
         self.address = Some(address);
         self
@@ -135,29 +142,34 @@ impl Section {
 
     /// Set the number of extra pages required while maximizing this section
     ///
-    /// Only used when Self::maximize is true
+    /// Only used when `Self::maximize` is true
+    #[must_use]
     pub fn set_relative_pages(mut self, num: i64) -> Self {
         self.relative_pages = num;
         self
     }
 
     /// clear the number of extra pages required while maximizing this section
+    #[must_use]
     pub fn clear_relative_pages(mut self) -> Self {
         self.relative_pages = 0;
         self
     }
 
     /// Clear the exact address for this section.
+    #[must_use]
     pub fn clear_address(mut self) -> Self {
         self.address = None;
         self
     }
 
     /// The section must be allocated at an exact address.
+    #[must_use]
     pub fn is_fixed(&self) -> bool {
         self.boot || self.address.is_some()
     }
 
+    #[must_use]
     pub fn pages_required(&self, page_size: Information) -> u64 {
         let Some(size) = self.size else {
             return self.pages.unwrap_or(0);
@@ -166,14 +178,17 @@ impl Section {
     }
 
     /// The section location is fully defined
+    #[must_use]
     pub fn is_resolved(&self) -> bool {
         self.address.is_some() && self.pages.is_some() && self.size.is_some() && !self.maximize
     }
 
+    #[must_use]
     pub fn needs_maximizing(&self) -> bool {
         self.maximize
     }
 
+    #[must_use]
     pub fn needs_allocating(&self) -> bool {
         !self.maximize && self.address.is_none()
     }
@@ -199,12 +214,13 @@ pub struct ResolvedLayout {
 
 impl ResolvedLayout {
     pub fn extend(&mut self, extend: impl Iterator<Item = ResolvedSection>) {
-        self.sections.extend(extend)
+        self.sections.extend(extend);
     }
 
+    #[must_use]
     pub fn into_memory(&self) -> ld_memory::Memory {
         let mut memory = ld_memory::Memory::new();
-        for s in self.sections.iter() {
+        for s in &self.sections {
             memory = memory.add_section(s.as_memory_section());
         }
         memory
@@ -279,6 +295,7 @@ impl ResolvedSection {
         self.address + self.size.get::<byte>()
     }
 
+    #[must_use]
     pub fn as_memory_section(&self) -> ld_memory::MemorySection {
         ld_memory::MemorySection::new(&self.section_name, self.address, self.size.get::<byte>())
     }
@@ -299,10 +316,10 @@ mod tests {
     #[test]
     fn deser() {
         let input = r#"
-        name: test
-        boot: false
-        pages: 2
-        size: 3 KiB
+        "name": test
+        "boot": false
+        "pages": 2
+        "size": 3 KiB
         "#;
         let section: Section = yaml_serde::from_str(input).unwrap();
         assert_eq!(section.name, "test");

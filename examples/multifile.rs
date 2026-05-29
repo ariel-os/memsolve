@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     for extra in args.sections {
         let f = File::open(extra)?;
         let sections: Layout = yaml_serde::from_reader(f)?;
-        base.layout_mut().merge(sections);
+        base.layout_mut().merge(&sections);
     }
 
     let resolved = base.resolve_layout()?;
