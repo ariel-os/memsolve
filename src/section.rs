@@ -1,4 +1,6 @@
 //! Memory sections.
+//!
+//! Sections can be maximized, to take up as much flash space as possible within the constraints.
 use std::ops::{Deref, DerefMut, Index};
 
 use crate::information::{Information, deser_option_information};
@@ -11,6 +13,7 @@ use uom::si::information::byte;
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Section {
+    /// Name of this section
     pub name: String,
     #[cfg_attr(feature = "serde", serde(default))]
     pub(crate) boot: bool,
@@ -30,10 +33,13 @@ pub struct Section {
     pub(crate) section_name: Option<String>,
 }
 
+/// Errors related to sections
 #[derive(Error, Debug)]
 pub enum SectionError {
+    /// Section name cannot be used in linker scripts.
     #[error("incorrect section name")]
     InvalidSectionName,
+    /// Section is not fully resolved while it must be already.
     #[error("section not completely resolved")]
     UnresolvedSection,
 }
@@ -169,6 +175,9 @@ impl Section {
         self.boot || self.address.is_some()
     }
 
+    /// Get the number of pages required for this section.
+    ///
+    /// Takes the required size into account for calculating the required number of pages.
     #[must_use]
     pub fn pages_required(&self, page_size: Information) -> u64 {
         let Some(size) = self.size else {
@@ -183,11 +192,13 @@ impl Section {
         self.address.is_some() && self.pages.is_some() && self.size.is_some() && !self.maximize
     }
 
+    /// Returns true if this section needs to be maximized.
     #[must_use]
     pub fn needs_maximizing(&self) -> bool {
         self.maximize
     }
 
+    /// Returns true if this section is not at a fixed position or requires resizing.
     #[must_use]
     pub fn needs_allocating(&self) -> bool {
         !self.maximize && self.address.is_none()
@@ -207,16 +218,19 @@ impl Section {
     }
 }
 
+/// Defines a fully resolved layout.
 #[derive(Clone, Debug)]
 pub struct ResolvedLayout {
     sections: Vec<ResolvedSection>,
 }
 
 impl ResolvedLayout {
+    /// Extend this resolved layout with other resolved sections.
     pub fn extend(&mut self, extend: impl Iterator<Item = ResolvedSection>) {
         self.sections.extend(extend);
     }
 
+    /// Generate a [`ld_memory::Memory`] from this layout.
     #[must_use]
     pub fn into_memory(&self) -> ld_memory::Memory {
         let mut memory = ld_memory::Memory::new();
@@ -255,6 +269,7 @@ impl DerefMut for ResolvedLayout {
     }
 }
 
+/// A fully resolved memory section
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedSection {
     pub(crate) name: String,
@@ -295,6 +310,7 @@ impl ResolvedSection {
         self.address + self.size.get::<byte>()
     }
 
+    /// Generate a [`ld_memory::MemorySection`] from this section.
     #[must_use]
     pub fn as_memory_section(&self) -> ld_memory::MemorySection {
         ld_memory::MemorySection::new(&self.section_name, self.address, self.size.get::<byte>())

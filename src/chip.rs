@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uom::si::information::byte;
 
+/// Describes the memory layout of a chip / microcontroller.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Chip {
@@ -17,13 +18,21 @@ pub struct Chip {
     total_size: Information,
 }
 
+/// Chip-related errors
 #[derive(Error, Debug)]
 pub enum ChipError {
+    /// Total size of the chip is not a multiple of the page size.
     #[error("total size not a multiple of the page size")]
     TotalSizePageSizeMismatch,
 }
 
 impl Chip {
+    /// Creates a new chip layout from a description in `Bytes`.
+    ///
+    /// # Errors
+    ///
+    /// Will return a `ChipError::TotalSizePageSizeMismatch` when the total size is not a multiple
+    /// of the page size.
     pub fn new(
         page_size: impl Into<Information>,
         start_address: u64,
@@ -41,6 +50,12 @@ impl Chip {
         })
     }
 
+    /// Creates a new chip layout from `u64` interpreted as bytes.
+    ///
+    /// # Errors
+    ///
+    /// Will return a `ChipError::TotalSizePageSizeMismatch` when the total size is not a multiple
+    /// of the page size.
     pub fn new_bytes(
         page_size: u64,
         start_address: u64,
@@ -53,22 +68,29 @@ impl Chip {
         )
     }
 
+    /// Returns the boot aaddress of this chip.
+    ///
+    /// The section marked as bootable will be allocated on this address.
     #[must_use]
     pub fn start_address(&self) -> u64 {
         self.start_address
     }
 
+    /// Returns the last address of this chip.
     #[must_use]
     pub fn end_address(&self) -> u64 {
         self.start_address + self.total_size.get::<byte>()
     }
 }
 
+/// Chip flash page size layout.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize), serde(untagged))]
 pub enum PageSize {
+    /// Chip contains a uniform flash page layout.
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deser_information"))]
     Uniform(Information),
+    /// Chip contains flash pages with different sizes.
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deser_vec_information"))]
     Heterogeneous(Vec<Information>),
 }

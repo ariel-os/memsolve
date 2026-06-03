@@ -1,10 +1,12 @@
+//! Rommel is a ROM Memory Layout generator.
 #![warn(clippy::pedantic)]
+#![warn(missing_docs)]
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 mod bin;
 pub mod chip;
-pub mod information;
+mod information;
 pub mod layout;
 pub mod section;
 mod solver;
@@ -14,60 +16,73 @@ use crate::layout::Layout;
 use crate::section::{ResolvedLayout, Section};
 use crate::solver::{solve, solve_free};
 
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Default, Serialize, Deserialize))]
-struct Config {
-    ordered: bool,
-}
-
+/// Memory layout description.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Memory {
     chip: Chip,
-    config: Config,
     #[cfg_attr(feature = "serde", serde(flatten))]
     layout: Layout,
 }
 
+/// Memory layout generation errors.
 #[derive(Debug, Error)]
 pub enum MemoryError {
+    /// Multiple sections are marked as bootable.
     #[error("multiple sections defined as bootable")]
     MultipleBootable,
 
+    /// Insufficient memory is available to fit sections.
     #[error("memory is too small to allocate all sections")]
     MemoryTooSmall,
 
+    /// Memory layout can not be resolved.
     #[error("unresolvable layout")]
     UnresolvableLayout,
 }
 
 impl Memory {
+    /// Create a new memory.
     #[must_use]
     pub fn new(chip: Chip) -> Self {
         Memory {
             chip,
-            config: Config::default(),
             layout: Layout::default(),
         }
     }
 
+    /// Set the current layout used by the memory.
     pub fn set_layout(&mut self, layout: Layout) {
         self.layout = layout;
     }
 
+    /// Add a memory section to the layout in the memory.
     pub fn add_section(&mut self, section: Section) {
         self.layout.push(section);
     }
 
+    /// Returns a mutable reference to the layout.
+    #[must_use]
     pub fn layout_mut(&mut self) -> &mut Layout {
         &mut self.layout
     }
 
+    /// Returns a reference to the layout.
     #[must_use]
     pub fn layout(&self) -> &Layout {
         &self.layout
     }
 
+    /// Fully resolves the layout.
+    ///
+    /// # Errors
+    ///
+    /// This returns the following errors:
+    ///
+    /// - [`MemoryError::MultipleBootable`]: When multiple sections are marked as bootable
+    /// - [`MemoryError::MemoryTooSmall`]: When the chip does not have sufficient memory available to fit all
+    ///   sections.
+    /// - [`MemoryError::UnresolvableLayout`]: When the requirements can not be resolved into a full layout.
     pub fn resolve_layout(&self) -> Result<ResolvedLayout, MemoryError> {
         // Fix bootable section to first address
         if self.layout.iter().filter(|s| s.boot).count() > 1 {

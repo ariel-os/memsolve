@@ -1,3 +1,4 @@
+//! Memory layout description.
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut, Index};
@@ -11,6 +12,7 @@ use crate::{
 
 use crate::information::Information;
 
+/// List of sections for a requested layout.
 #[derive(Debug, Default, PartialEq, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct Layout {
@@ -18,11 +20,13 @@ pub struct Layout {
 }
 
 impl Layout {
+    /// Create a new set of sections.
     #[must_use]
     pub fn new(sections: Vec<Section>) -> Self {
         Self { sections }
     }
 
+    /// Extend the sections with a section.
     pub fn push(&mut self, section: Section) {
         self.sections.push(section);
     }
@@ -92,6 +96,7 @@ impl Layout {
         self.iter().fold(0, |acc, s| acc + s.pages.unwrap_or(0))
     }
 
+    /// Searches for a section with the provided name.
     pub fn find(&self, name: &impl PartialEq<String>) -> Option<&Section> {
         self.iter().find(|s| name.eq(&s.name))
     }
@@ -100,6 +105,10 @@ impl Layout {
         self.iter_mut().find(|s| name.eq(&s.name))
     }
 
+    /// Merge anothor layout into this layout.
+    ///
+    /// Sections in the other layout that do not exist in this layout are added.
+    /// Sections that exist in both layouts are merged with [`Section::merge`].
     pub fn merge(&mut self, other: &Self) {
         for s in other.iter() {
             if let Some(existing) = self.find_mut(&s.name) {
