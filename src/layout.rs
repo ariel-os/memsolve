@@ -47,10 +47,21 @@ impl Layout {
         // find bins between fixed sections
         let mut fixed = self.resolved_sections().collect::<Vec<_>>();
         fixed.sort_by_key(|a| a.address);
-        if fixed.first().is_some_and(|first| first.address != 0) || fixed.is_empty() {
+        let start_address = chip.start_address();
+        if fixed
+            .first()
+            .is_some_and(|first| first.address != start_address)
+            || fixed.is_empty()
+        {
             fixed.insert(
                 0,
-                ResolvedSection::new("a".into(), 0, Information::new::<byte>(0), 0, None),
+                ResolvedSection::new(
+                    "a".into(),
+                    0,
+                    Information::new::<byte>(0),
+                    start_address,
+                    None,
+                ),
             );
         }
 
