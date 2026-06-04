@@ -272,11 +272,16 @@ impl DerefMut for ResolvedLayout {
 /// A fully resolved memory section
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResolvedSection {
-    pub(crate) name: String,
-    pub(crate) pages: u64,
-    pub(crate) size: Information,
-    pub(crate) address: u64,
-    pub(crate) section_name: String,
+    /// Name of this section.
+    pub name: String,
+    /// Number of pages this section uses.
+    pub pages: u64,
+    /// Size of this section.
+    pub size: Information,
+    /// Start address of this section.
+    pub address: u64,
+    /// Linker script section name.
+    pub section_name: String,
 }
 
 impl ResolvedSection {
