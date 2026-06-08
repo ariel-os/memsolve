@@ -84,14 +84,12 @@ impl Memory {
     /// - [`MemoryError::MemoryTooSmall`]: When the chip does not have sufficient memory available to fit all
     ///   sections.
     /// - [`MemoryError::UnresolvableLayout`]: When the requirements can not be resolved into a full layout.
+    #[must_use]
     pub fn resolve_layout(&self) -> Result<ResolvedLayout, MemoryError> {
         // Fix bootable section to first address
         if self.layout.iter().filter(|s| s.boot).count() > 1 {
             return Err(MemoryError::MultipleBootable);
         }
-        //if let Some(boot) = self.layout.iter_mut().find(|s| s.boot) {
-        //    boot.address = Some(start_address);
-        //}
         let bins = self.layout.memory_bins(&self.chip);
 
         let sections = self.layout.allocatable_sections();
