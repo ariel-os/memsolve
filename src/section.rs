@@ -30,7 +30,7 @@ pub struct Section {
     #[cfg_attr(feature = "serde", serde(default))]
     pub(crate) relative_pages: i64,
     #[cfg_attr(feature = "serde", serde(default))]
-    pub(crate) section_name: Option<String>,
+    pub(crate) linker_name: Option<String>,
 }
 
 /// Errors related to sections
@@ -60,7 +60,7 @@ impl Section {
             size: None,
             address: None,
             relative_pages: 0,
-            section_name: None,
+            linker_name: None,
         })
     }
 
@@ -90,10 +90,10 @@ impl Section {
             self.relative_pages = sec.relative_pages;
         }
 
-        if let Some(section_name) = &sec.section_name
-            && self.section_name.is_none()
+        if let Some(linker_name) = &sec.linker_name
+            && self.linker_name.is_none()
         {
-            self.section_name = Some(section_name.clone());
+            self.linker_name = Some(linker_name.clone());
         }
     }
 
@@ -213,7 +213,7 @@ impl Section {
             pages,
             size,
             address,
-            section_name: self.section_name.as_ref().unwrap_or(&self.name).clone(),
+            linker_name: self.linker_name.as_ref().unwrap_or(&self.name).clone(),
         })
     }
 }
@@ -281,7 +281,7 @@ pub struct ResolvedSection {
     /// Start address of this section.
     pub address: u64,
     /// Linker script section name.
-    pub section_name: String,
+    pub linker_name: String,
 }
 
 impl ResolvedSection {
@@ -290,15 +290,15 @@ impl ResolvedSection {
         pages: u64,
         size: Information,
         address: u64,
-        section_name: Option<String>,
+        linker_name: Option<String>,
     ) -> Self {
-        let section_name = section_name.unwrap_or(name.clone());
+        let linker_name = linker_name.unwrap_or(name.clone());
         Self {
             name,
             pages,
             size,
             address,
-            section_name,
+            linker_name,
         }
     }
 
@@ -318,7 +318,7 @@ impl ResolvedSection {
     /// Generate a [`ld_memory::MemorySection`] from this section.
     #[must_use]
     pub fn as_memory_section(&self) -> ld_memory::MemorySection {
-        ld_memory::MemorySection::new(&self.section_name, self.address, self.size.get::<byte>())
+        ld_memory::MemorySection::new(&self.linker_name, self.address, self.size.get::<byte>())
     }
 }
 

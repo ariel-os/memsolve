@@ -81,7 +81,7 @@ pub(crate) fn solve<'a>(
                         set_pages,
                         bin.page_size * set_pages,
                         *next_address,
-                        section.section_name.clone(),
+                        section.linker_name.clone(),
                     );
                     *next_address += bin.page_size.get::<byte>() * section.pages.unwrap();
                     Some(r)
