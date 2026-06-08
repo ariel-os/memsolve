@@ -1,5 +1,62 @@
 //! Memsolve is a crate to generate ROM Memory Layouts for microcontrollers and other embedded
 //! devices.
+//!
+//! Microcontrollers have limited flash (ROM) available, separated into pages. This flash can used
+//! for multiple purposes, a bootloader, data storage, multiple applications. memsolve allows for
+//! describing the different requirements of these sections, whether thats a set number of pages or
+//! a minimal size, and uses a linear solver to resolve the layout into addresses for the flash
+//! layout. This layout can then be used as basis for the `memory.x` file  in projects such as
+//! [Embassy] or [Ariel OS]
+//!
+//! # Overview
+//!
+//! This section gives a brief overview of the primary types in this crate:
+//!
+//! - [`Memory`] is the primary object and represents the memory layout.
+//! - [`Chip`] describes the target of the layout, including the total size of the flash and the
+//!   page size
+//! - [`Section`] describes the requirements on a single section.
+//!
+//! # Example: simple layout
+//!
+//! This example shows how to generate a layout for a microcontroller where one section will
+//! contain the application and another contains some configuration. The application section must be as
+//! large as possible within the flash and the configuration section requires 3 pages, but no
+//! specific minimum size.
+//!
+//! ```
+//! use memsolve::{Memory, section::Section, chip::Chip, information::Information};
+//! use uom::si::information::{byte, kibibyte};
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Our example chip has 64 KiB Flash with 2048 byte pages
+//! let chip = Chip::new(Information::new::<byte>(2048), 0x800_000, Information::new::<kibibyte>(64))?;
+//! let mut memory = Memory::new(chip);
+//!
+//! // Add the application section
+//! memory.add_section(
+//!     Section::new("app")?
+//!     .set_boot(true)
+//!     .set_maximize(true)
+//! );
+//! // Add the configuration storage section
+//! memory.add_section(
+//!     Section::new("config")?
+//!     .set_pages(3)
+//!     );
+//!
+//! // This layout is fully resolved
+//! let layout = memory.resolve_layout()?;
+//!
+//! assert_eq!(layout[0].address, 0x800_000);
+//! assert_eq!(layout[0].pages, 29);
+//! assert_eq!(layout[1].address, 0x80E_800);
+//! assert_eq!(layout[1].pages, 3);
+//!
+//! # Ok(())
+//! # }
+//! ```
+
 #![warn(clippy::pedantic)]
 #![warn(missing_docs)]
 use serde::{Deserialize, Serialize};
