@@ -1,7 +1,7 @@
 use std::{error::Error, fs::File};
 
 use clap::Parser;
-use rommel::{Memory, layout::Layout};
+use memsolve::{Memory, layout::Layout};
 
 #[derive(Parser)]
 #[command(version, about, long_about = "Multi-file yaml to memory.x parser")]

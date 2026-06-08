@@ -1,10 +1,10 @@
 [package]
-name = "rommel"
+name = "memsolve"
 version = "0.1.0"
 edition = "2024"
-description = "ROM memory layout generator for linker script generation"
-homepage = "https://codeberg.org/bergzand/rommel/"
-repository = "https://codeberg.org/bergzand/rommel/"
+description = "ROM memory layout solver for linker script generation"
+homepage = "https://codeberg.org/bergzand/memsolve/"
+repository = "https://codeberg.org/bergzand/memsolve/"
 license = "MIT OR Apache-2.0"
 categories = ["embedded"]
 

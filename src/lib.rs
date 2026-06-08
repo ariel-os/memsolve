@@ -1,4 +1,5 @@
-//! Rommel is a ROM Memory Layout generator.
+//! Memsolve is a crate to generate ROM Memory Layouts for microcontrollers and other embedded
+//! devices.
 #![warn(clippy::pedantic)]
 #![warn(missing_docs)]
 use serde::{Deserialize, Serialize};

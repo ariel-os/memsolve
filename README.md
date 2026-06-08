@@ -1,3 +1,3 @@
-# Rommel
+# Memsolve 
 
-Rommel (Dutch for junk or rubbish) is a ROM memory layout generator.
+Memsolve is a ROM memory layout generator.
