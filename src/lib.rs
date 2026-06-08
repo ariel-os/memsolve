@@ -7,7 +7,7 @@ use thiserror::Error;
 
 mod bin;
 pub mod chip;
-mod information;
+pub mod information;
 pub mod layout;
 pub mod section;
 mod solver;
