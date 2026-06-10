@@ -1,7 +1,7 @@
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Deserializer};
-pub use uom::si::information::*;
-pub use uom::si::u64::Information;
+#[cfg(feature = "uom")]
+pub use uom::si::{information::byte, u64::Information};
 
 #[cfg(feature = "serde")]
 pub(crate) fn deser_information<'de, D>(d: D) -> Result<u64, D::Error>

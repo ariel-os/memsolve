@@ -1,10 +1,12 @@
 //! Chip configuration infomation
 
+#[cfg(feature = "uom")]
 use crate::information::Information;
 #[cfg(feature = "serde")]
 use crate::information::{deser_information, deser_vec_information};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+#[cfg(feature = "uom")]
 use uom::si::information::byte;
 
 /// Describes the memory layout of a chip / microcontroller.
@@ -50,6 +52,7 @@ impl Chip {
     ///
     /// Will return a `ChipError::TotalSizePageSizeMismatch` when the total size is not a multiple
     /// of the page size.
+    #[cfg(feature = "uom")]
     pub fn new_bytes(
         page_size: impl Into<Information>,
         start_address: u64,

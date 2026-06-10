@@ -14,11 +14,12 @@ ld-memory = "0.2.9"
 microlp = "0.4.0"
 serde = { version = "1.0.228", optional = true, features = ["derive"] }
 thiserror = "2.0.18"
-uom = { version = "0.38.0", features = ["si", "u64"] }
+uom = { version = "0.38.0", optional = true, features = ["si", "u64"] }
 
 [features]
 default = ["serde"]
-serde = ["dep:serde", "uom/serde"]
+serde = ["dep:serde", "dep:uom", "uom/serde"]
+uom = ["dep:uom"]
 
 [dev-dependencies]
 clap = { version = "4.6.1", features = ["derive"] }

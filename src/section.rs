@@ -3,10 +3,12 @@
 //! Sections can be maximized, to take up as much flash space as possible within the constraints.
 use std::ops::{Deref, DerefMut, Index};
 
+#[cfg(feature = "serde")]
 use crate::information::{Information, deser_option_information};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+#[cfg(feature = "uom")]
 use uom::si::information::byte;
 
 /// A Memory section.
@@ -135,6 +137,7 @@ impl Section {
 
     /// Set the minimum size for this section.
     #[must_use]
+    #[cfg(feature = "uom")]
     pub fn set_size_bytes(self, bytes: impl Into<Information>) -> Self {
         self.set_size(bytes.into().get::<byte>())
     }
@@ -186,6 +189,7 @@ impl Section {
     ///
     /// Takes the required size into account for calculating the required number of pages.
     #[must_use]
+    #[cfg(feature = "uom")]
     pub fn pages_required(&self, page_size: Information) -> u64 {
         let Some(size) = self.size else {
             return self.pages.unwrap_or(0);
