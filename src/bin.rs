@@ -1,9 +1,5 @@
 use std::ops::Deref;
 
-use uom::si::information::byte;
-
-use crate::information::Information;
-
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Bin {
     bins: Vec<MemoryBin>,
@@ -23,12 +19,12 @@ impl Bin {
 pub(crate) struct MemoryBin {
     pub(crate) start_address: u64,
     pub(crate) end_address: u64,
-    pub(crate) page_size: Information,
+    pub(crate) page_size: u64,
 }
 
 impl MemoryBin {
     pub(crate) fn num_pages(&self) -> u64 {
-        (self.end_address - self.start_address) / self.page_size.get::<byte>()
+        (self.end_address - self.start_address) / self.page_size
     }
 }
 

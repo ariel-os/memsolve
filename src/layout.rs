@@ -2,15 +2,12 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut, Index};
-use uom::si::information::byte;
 
 use crate::{
     bin::{Bin, MemoryBin},
     chip::{Chip, PageSize},
     section::{ResolvedSection, Section},
 };
-
-use crate::information::Information;
 
 /// List of sections for a requested layout.
 #[derive(Debug, Default, PartialEq, Clone)]
@@ -55,25 +52,19 @@ impl Layout {
         {
             fixed.insert(
                 0,
-                ResolvedSection::new(
-                    "a".into(),
-                    0,
-                    Information::new::<byte>(0),
-                    start_address,
-                    None,
-                ),
+                ResolvedSection::new("a".into(), 0, 0, start_address, None),
             );
         }
 
         if fixed
             .last()
-            .is_some_and(|last| (last.address + last.size.get::<byte>()) != chip.end_address())
+            .is_some_and(|last| (last.address + last.size) != chip.end_address())
             || fixed.is_empty()
         {
             fixed.push(ResolvedSection::new(
                 "z".into(),
                 0,
-                Information::new::<byte>(0),
+                0,
                 chip.end_address(),
                 None,
             ));

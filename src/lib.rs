@@ -25,12 +25,11 @@
 //! specific minimum size.
 //!
 //! ```
-//! use memsolve::{Memory, section::Section, chip::Chip, information::Information};
-//! use uom::si::information::{byte, kibibyte};
+//! use memsolve::{Memory, section::Section, chip::Chip};
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! // Our example chip has 64 KiB Flash with 2048 byte pages
-//! let chip = Chip::new(Information::new::<byte>(2048), 0x800_000, Information::new::<kibibyte>(64))?;
+//! let chip = Chip::new(2048, 0x800_000, 64 * 1024)?;
 //! let mut memory = Memory::new(chip);
 //!
 //! // Add the application section
@@ -52,7 +51,6 @@
 //! assert_eq!(layout[0].pages, 29);
 //! assert_eq!(layout[1].address, 0x80E_800);
 //! assert_eq!(layout[1].pages, 3);
-//!
 //! # Ok(())
 //! # }
 //! ```
@@ -64,7 +62,7 @@ use thiserror::Error;
 
 mod bin;
 pub mod chip;
-pub mod information;
+mod information;
 pub mod layout;
 pub mod section;
 mod solver;
@@ -141,7 +139,6 @@ impl Memory {
     /// - [`MemoryError::MemoryTooSmall`]: When the chip does not have sufficient memory available to fit all
     ///   sections.
     /// - [`MemoryError::UnresolvableLayout`]: When the requirements can not be resolved into a full layout.
-    #[must_use]
     pub fn resolve_layout(&self) -> Result<ResolvedLayout, MemoryError> {
         // Fix bootable section to first address
         if self.layout.iter().filter(|s| s.boot).count() > 1 {
@@ -199,27 +196,18 @@ impl Memory {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use uom::si::information::Information;
-    use uom::si::information::byte;
 
     #[test]
     fn bins() {
-        let chip = crate::Chip::new(
-            Information::new::<byte>(1000),
-            0,
-            Information::new::<byte>(10000),
-        )
-        .unwrap();
-
+        let chip = crate::Chip::new(1000, 0, 10000).unwrap();
         let mut memory = Memory::new(chip);
-
         [0, 2000, 3000, 7000]
             .into_iter()
             .map(|i| {
                 Section::new(format!("sec{i}"))
                     .unwrap()
                     .set_address(i)
-                    .set_size(Information::new::<byte>(1000))
+                    .set_size(1000)
                     .set_pages(1)
             })
             .for_each(|s| memory.add_section(s));
@@ -238,12 +226,7 @@ mod tests {
     fn solver() {
         use itertools::Itertools;
 
-        let chip = crate::Chip::new(
-            Information::new::<byte>(1000),
-            0,
-            Information::new::<byte>(20000),
-        )
-        .unwrap();
+        let chip = crate::Chip::new(1000, 0, 20000).unwrap();
 
         let mut memory = Memory::new(chip);
 
@@ -253,7 +236,7 @@ mod tests {
                 Section::new(format!("fixed{i}"))
                     .unwrap()
                     .set_address(i)
-                    .set_size(Information::new::<byte>(1000))
+                    .set_size(1000)
                     .set_pages(1)
             })
             .for_each(|s| memory.add_section(s));
@@ -267,18 +250,13 @@ mod tests {
 
         for (prev, next) in resolved.iter().tuple_windows() {
             // No overlap between sections
-            assert!(prev.address + prev.size.get::<byte>() <= next.address);
+            assert!(prev.address + prev.size <= next.address);
         }
     }
 
     #[test]
     fn solve_boot_maximize() {
-        let chip = crate::Chip::new(
-            Information::new::<byte>(1000),
-            0,
-            Information::new::<byte>(20000),
-        )
-        .unwrap();
+        let chip = crate::Chip::new(1000, 0, 20000).unwrap();
 
         let mut memory = Memory::new(chip);
 
@@ -288,7 +266,7 @@ mod tests {
                 Section::new(format!("fixed{i}"))
                     .unwrap()
                     .set_address(i)
-                    .set_size(Information::new::<byte>(1000))
+                    .set_size(1000)
                     .set_pages(1)
             })
             .for_each(|s| memory.add_section(s));

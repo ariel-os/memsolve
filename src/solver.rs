@@ -1,12 +1,10 @@
 //! Memory layout solver
-use itertools::Itertools;
-use microlp::{ComparisonOp, Error as SolverError, LinearExpr, OptimizationDirection, Problem};
-use uom::si::information::byte;
-
 use crate::{
     bin::Bin,
     section::{ResolvedLayout, ResolvedSection, Section},
 };
+use itertools::Itertools;
+use microlp::{ComparisonOp, Error as SolverError, LinearExpr, OptimizationDirection, Problem};
 
 pub(crate) fn solve<'a>(
     bins: &Bin,
@@ -83,7 +81,7 @@ pub(crate) fn solve<'a>(
                         *next_address,
                         section.linker_name.clone(),
                     );
-                    *next_address += bin.page_size.get::<byte>() * section.pages.unwrap();
+                    *next_address += bin.page_size * section.pages.unwrap();
                     Some(r)
                 })
         })

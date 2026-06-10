@@ -15,7 +15,7 @@ pub struct Chip {
     start_address: u64,
     pub(crate) page_size: PageSize,
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deser_information"))]
-    total_size: Information,
+    total_size: u64,
 }
 
 /// Chip-related errors
@@ -33,14 +33,8 @@ impl Chip {
     ///
     /// Will return a `ChipError::TotalSizePageSizeMismatch` when the total size is not a multiple
     /// of the page size.
-    pub fn new(
-        page_size: impl Into<Information>,
-        start_address: u64,
-        total_size: impl Into<Information>,
-    ) -> Result<Self, ChipError> {
-        let total_size = total_size.into();
-        let page_size = page_size.into();
-        if (total_size % page_size) != Information::new::<byte>(0) {
+    pub fn new(page_size: u64, start_address: u64, total_size: u64) -> Result<Self, ChipError> {
+        if !total_size.is_multiple_of(page_size) {
             return Err(ChipError::TotalSizePageSizeMismatch);
         }
         Ok(Self {
@@ -57,14 +51,14 @@ impl Chip {
     /// Will return a `ChipError::TotalSizePageSizeMismatch` when the total size is not a multiple
     /// of the page size.
     pub fn new_bytes(
-        page_size: u64,
+        page_size: impl Into<Information>,
         start_address: u64,
-        total_size: u64,
+        total_size: impl Into<Information>,
     ) -> Result<Self, ChipError> {
         Self::new(
-            Information::new::<byte>(page_size),
+            page_size.into().get::<byte>(),
             start_address,
-            Information::new::<byte>(total_size),
+            total_size.into().get::<byte>(),
         )
     }
 
@@ -79,7 +73,7 @@ impl Chip {
     /// Returns the last address of this chip.
     #[must_use]
     pub fn end_address(&self) -> u64 {
-        self.start_address + self.total_size.get::<byte>()
+        self.start_address + self.total_size
     }
 }
 
@@ -89,10 +83,10 @@ impl Chip {
 pub enum PageSize {
     /// Chip contains a uniform flash page layout.
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deser_information"))]
-    Uniform(Information),
+    Uniform(u64),
     /// Chip contains flash pages with different sizes.
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deser_vec_information"))]
-    Heterogeneous(Vec<Information>),
+    Heterogeneous(Vec<u64>),
 }
 
 #[cfg(test)]
@@ -103,10 +97,7 @@ mod tests {
     fn deser_uniform() {
         let input = r#"{ "page_size": 4 KiB, "total_size": 16 KiB}"#;
         let chip: Chip = yaml_serde::from_str(input).unwrap();
-        assert_eq!(
-            chip.page_size,
-            PageSize::Uniform(Information::new::<byte>(4 * 1024))
-        );
+        assert_eq!(chip.page_size, PageSize::Uniform(4 * 1024));
     }
 
     #[test]
@@ -115,11 +106,7 @@ mod tests {
         let chip: Chip = yaml_serde::from_str(input).unwrap();
         assert_eq!(
             chip.page_size,
-            PageSize::Heterogeneous(vec![
-                Information::new::<byte>(4 * 1024),
-                Information::new::<byte>(4 * 1024),
-                Information::new::<byte>(2 * 1024),
-            ])
+            PageSize::Heterogeneous(vec![4 * 1024, 4 * 1024, 2 * 1024,])
         );
     }
 }

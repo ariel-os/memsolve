@@ -20,11 +20,12 @@ pub struct Section {
     #[cfg_attr(feature = "serde", serde(default))]
     pub(crate) maximize: bool,
     pub(crate) pages: Option<u64>,
+    /// The size of the section in bytes
     #[cfg_attr(
         feature = "serde",
         serde(default, deserialize_with = "deser_option_information")
     )]
-    pub(crate) size: Option<Information>,
+    pub(crate) size: Option<u64>,
     #[cfg_attr(feature = "serde", serde(default))]
     pub(crate) address: Option<u64>,
     #[cfg_attr(feature = "serde", serde(default))]
@@ -125,11 +126,17 @@ impl Section {
         self
     }
 
+    /// Set the minimum size in bytes for this section.
+    #[must_use]
+    pub fn set_size(mut self, bytes: u64) -> Self {
+        self.size = Some(bytes);
+        self
+    }
+
     /// Set the minimum size for this section.
     #[must_use]
-    pub fn set_size(mut self, bytes: impl Into<Information>) -> Self {
-        self.size = Some(bytes.into());
-        self
+    pub fn set_size_bytes(self, bytes: impl Into<Information>) -> Self {
+        self.set_size(bytes.into().get::<byte>())
     }
 
     /// Clear the minimum size for this section.
@@ -183,7 +190,7 @@ impl Section {
         let Some(size) = self.size else {
             return self.pages.unwrap_or(0);
         };
-        size.get::<byte>().div_ceil(page_size.get::<byte>())
+        size.div_ceil(page_size.get::<byte>())
     }
 
     /// The section location is fully defined
@@ -276,8 +283,8 @@ pub struct ResolvedSection {
     pub name: String,
     /// Number of pages this section uses.
     pub pages: u64,
-    /// Size of this section.
-    pub size: Information,
+    /// Size of this section in bytes.
+    pub size: u64,
     /// Start address of this section.
     pub address: u64,
     /// Linker script section name.
@@ -288,7 +295,7 @@ impl ResolvedSection {
     pub(crate) fn new(
         name: String,
         pages: u64,
-        size: Information,
+        size: u64,
         address: u64,
         linker_name: Option<String>,
     ) -> Self {
@@ -312,13 +319,13 @@ impl ResolvedSection {
     }
 
     pub(crate) fn next_free_address(&self) -> u64 {
-        self.address + self.size.get::<byte>()
+        self.address + self.size
     }
 
     /// Generate a [`ld_memory::MemorySection`] from this section.
     #[must_use]
     pub fn as_memory_section(&self) -> ld_memory::MemorySection {
-        ld_memory::MemorySection::new(&self.linker_name, self.address, self.size.get::<byte>())
+        ld_memory::MemorySection::new(&self.linker_name, self.address, self.size)
     }
 }
 
@@ -346,17 +353,17 @@ mod tests {
         assert_eq!(section.name, "test");
         assert!(!section.boot);
         assert_eq!(section.pages, Some(2));
-        assert_eq!(section.size, Some(Information::new::<byte>(3 * 1024)));
+        assert_eq!(section.size, Some(3 * 1024));
     }
 
     #[test]
     fn merge() {
         let mut section = Section::new("t")
             .unwrap()
-            .set_size(Information::new::<byte>(100));
+            .set_size_bytes(Information::new::<byte>(100));
         let second = Section::new("t").unwrap().set_pages(1);
         section.merge(&second);
         assert_eq!(section.pages, Some(1));
-        assert_eq!(section.size, Some(Information::new::<byte>(100)));
+        assert_eq!(section.size, Some(100));
     }
 }
