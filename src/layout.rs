@@ -1,5 +1,6 @@
 //! Memory layout description.
 use itertools::Itertools;
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut, Index};
 

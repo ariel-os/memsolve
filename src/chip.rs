@@ -4,6 +4,7 @@
 use crate::information::Information;
 #[cfg(feature = "serde")]
 use crate::information::{deser_information, deser_vec_information};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 #[cfg(feature = "uom")]

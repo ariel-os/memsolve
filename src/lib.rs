@@ -57,6 +57,8 @@
 
 #![warn(clippy::pedantic)]
 #![warn(missing_docs)]
+
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
