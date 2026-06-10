@@ -336,6 +336,7 @@ impl ResolvedSection {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "uom")]
     use uom::si::information::byte;
 
     #[test]
@@ -346,6 +347,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "serde")]
     fn deser() {
         let input = r#"
         "name": test
@@ -362,9 +364,7 @@ mod tests {
 
     #[test]
     fn merge() {
-        let mut section = Section::new("t")
-            .unwrap()
-            .set_size_bytes(Information::new::<byte>(100));
+        let mut section = Section::new("t").unwrap().set_size(100);
         let second = Section::new("t").unwrap().set_pages(1);
         section.merge(&second);
         assert_eq!(section.pages, Some(1));

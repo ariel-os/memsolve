@@ -98,6 +98,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(feature = "serde")]
     fn deser_uniform() {
         let input = r#"{ "page_size": 4 KiB, "total_size": 16 KiB}"#;
         let chip: Chip = yaml_serde::from_str(input).unwrap();
@@ -105,6 +106,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "serde")]
     fn deser_heterogeneous() {
         let input = r#"{ "page_size": [4 KiB, 4 KiB, 2048 B], total_size: 10 KiB}"#;
         let chip: Chip = yaml_serde::from_str(input).unwrap();
