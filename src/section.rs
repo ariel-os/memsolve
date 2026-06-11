@@ -3,8 +3,10 @@
 //! Sections can be maximized, to take up as much flash space as possible within the constraints.
 use std::ops::{Deref, DerefMut, Index};
 
+#[cfg(feature = "uom")]
+use crate::information::Information;
 #[cfg(feature = "serde")]
-use crate::information::{Information, deser_option_information};
+use crate::information::deser_option_information;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -336,8 +338,6 @@ impl ResolvedSection {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "uom")]
-    use uom::si::information::byte;
 
     #[test]
     fn name() {

@@ -22,7 +22,7 @@ pub struct Chip {
 }
 
 /// Chip-related errors
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ChipError {
     /// Total size of the chip is not a multiple of the page size.
     #[error("total size not a multiple of the page size")]
@@ -113,6 +113,14 @@ mod tests {
         assert_eq!(
             chip.page_size,
             PageSize::Heterogeneous(vec![4 * 1024, 4 * 1024, 2 * 1024,])
+        );
+    }
+
+    #[test]
+    fn reject() {
+        assert_eq!(
+            Chip::new(2, 0, 3),
+            Err(ChipError::TotalSizePageSizeMismatch)
         );
     }
 }
