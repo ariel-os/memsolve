@@ -39,7 +39,7 @@ pub struct Section {
 }
 
 /// Errors related to sections
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum SectionError {
     /// Section name cannot be used in linker scripts.
     #[error("incorrect section name")]
@@ -47,10 +47,19 @@ pub enum SectionError {
     /// Section is not fully resolved while it must be already.
     #[error("section not completely resolved")]
     UnresolvedSection,
+    /// Section does not have a size bound and can not be resolved.
+    #[error("No page and byte size bound for section")]
+    NoSizeBound,
 }
 
 impl Section {
-    /// Create a new section
+    /// Create a new section.
+    ///
+    /// The `name` of the section must be a valid ``LD_MEMORY`` memory name.
+    ///
+    /// # Errors
+    ///
+    /// - [`SectionError::InvalidSectionName`]: when the `name` is not valid.
     pub fn new(name: impl Into<String>) -> Result<Self, SectionError> {
         let name = name.into();
         if name.chars().any(|c| !c.is_ascii_alphanumeric()) {
@@ -228,6 +237,28 @@ impl Section {
             address,
             linker_name: self.linker_name.as_ref().unwrap_or(&self.name).clone(),
         })
+    }
+
+    pub(crate) fn required_pages(&self, page_size: u64) -> Result<u64, SectionError> {
+        let page_required = self.pages.unwrap_or(0);
+        let size_pages = self.size.map_or(0, |size| size.div_ceil(page_size));
+        if page_required == 0 && size_pages == 0 {
+            Err(SectionError::NoSizeBound)
+        } else {
+            Ok(std::cmp::max(page_required, size_pages))
+        }
+    }
+    pub(crate) fn required_pages_in_bin(
+        &self,
+        bin: &crate::bin::MemoryBin,
+    ) -> Result<u64, SectionError> {
+        self.required_pages(bin.page_size)
+    }
+}
+
+impl std::fmt::Display for Section {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Section({})", self.name)
     }
 }
 

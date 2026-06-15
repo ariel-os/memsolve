@@ -97,6 +97,10 @@ pub enum MemoryError {
     /// Memory layout can not be resolved.
     #[error("unresolvable layout")]
     UnresolvableLayout,
+
+    /// Address is too large to represent in the solver
+    #[error("address too large for solver")]
+    AddressTooLarge,
 }
 
 impl Memory {
@@ -143,7 +147,7 @@ impl Memory {
     /// - [`MemoryError::UnresolvableLayout`]: When the requirements can not be resolved into a full layout.
     pub fn resolve_layout(&self) -> Result<ResolvedLayout, MemoryError> {
         // Fix bootable section to first address
-        if self.layout.iter().filter(|s| s.boot).count() > 1 {
+        if self.layout.num_bootable() > 1 {
             return Err(MemoryError::MultipleBootable);
         }
         let bins = self.layout.memory_bins(&self.chip);
@@ -155,7 +159,8 @@ impl Memory {
         if section_pages > bin_pages {
             return Err(MemoryError::MemoryTooSmall);
         }
-        let mut free_pages = bin_pages - section_pages;
+        // overflow should not occur due to the above check
+        let mut free_pages = bin_pages.wrapping_sub(section_pages);
         let maximized_sections = self.layout.maximizing_sections();
         let mut resolved = loop {
             if free_pages == 0 && maximized_sections.clone().count() > 0 {
@@ -166,7 +171,7 @@ impl Memory {
             let next_free_pages = {
                 let assigned_pages = maxed_sections
                     .iter()
-                    .fold(0, |acc, x| acc + x.pages.unwrap());
+                    .fold(0, |acc, x| acc + x.pages.unwrap_or(0));
                 if assigned_pages > 0 {
                     assigned_pages - 1
                 } else {

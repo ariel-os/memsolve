@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 categories = ["embedded"]
 
 [dependencies]
+conv = "0.3.3"
 itertools = "0.14.0"
 ld-memory = "0.2.9"
 microlp = "0.4.0"
@@ -28,3 +29,8 @@ yaml_serde = "0.10.4"
 [[example]]
 name = "multifile"
 required-features = ["serde"]
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"

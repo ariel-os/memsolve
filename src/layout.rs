@@ -95,8 +95,13 @@ impl Layout {
                 .collect::<Vec<_>>(),
         )
     }
+
     pub(crate) fn num_pages(&self) -> u64 {
         self.iter().fold(0, |acc, s| acc + s.pages.unwrap_or(0))
+    }
+
+    pub(crate) fn num_bootable(&self) -> usize {
+        self.iter().filter(|s| s.boot).count()
     }
 
     /// Searches for a section with the provided name.

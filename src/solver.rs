@@ -1,10 +1,29 @@
 //! Memory layout solver
 use crate::{
     bin::Bin,
-    section::{ResolvedLayout, ResolvedSection, Section},
+    section::{ResolvedLayout, ResolvedSection, Section, SectionError},
 };
+use conv::{ApproxInto, ValueInto};
 use itertools::Itertools;
-use microlp::{ComparisonOp, Error as SolverError, LinearExpr, OptimizationDirection, Problem};
+use microlp::{ComparisonOp, LinearExpr, OptimizationDirection, Problem};
+use thiserror::Error;
+
+#[derive(Error, Debug, PartialEq)]
+pub(super) enum SolverError {
+    #[error("solver error: {0}")]
+    Solver(#[from] microlp::Error),
+    #[error("too many pages in section {0} for solver")]
+    TooManySectionPages(Section),
+    #[error("too many pages in the chip flash for solver")]
+    TooManyFlashPages,
+    #[error("no free regions")]
+    NoAllocationRegions,
+    #[error("section error: {0}")]
+    SectionError(#[from] SectionError),
+
+    #[error("conversion from float to integer failed")]
+    ConversionError,
+}
 
 pub(crate) fn solve<'a>(
     bins: &Bin,
@@ -12,7 +31,7 @@ pub(crate) fn solve<'a>(
 ) -> Result<ResolvedLayout, SolverError> {
     let mut problem = Problem::new(OptimizationDirection::Minimize);
     let num_bins = bins.len();
-    let largest_bin = bins.iter().max_by_key(|b| b.num_pages()).unwrap();
+    let largest_bin = bins.largest_bin().ok_or(SolverError::NoAllocationRegions)?;
 
     let mut variables = vec![vec![]; num_bins];
 
@@ -21,14 +40,30 @@ pub(crate) fn solve<'a>(
         for section in sections.clone() {
             let var = problem.add_binary_var(0.0);
             variables[i].push(var);
-            bin_constraint.add(var, section.pages.unwrap() as f64);
+            bin_constraint.add(
+                var,
+                section
+                    .required_pages_in_bin(bin)?
+                    .value_into()
+                    .map_err(|_| SolverError::TooManySectionPages(section.clone()))?,
+            );
         }
         if bin == largest_bin {
-            problem.add_constraint(bin_constraint, ComparisonOp::Le, bin.num_pages() as f64);
+            problem.add_constraint(bin_constraint, ComparisonOp::Le, into_f64(bin.num_pages())?);
         } else {
-            let free_space = problem.add_integer_var(1.0 * i as f64, (0, bin.num_pages() as i32));
+            let free_space = problem.add_integer_var(
+                1.0 * into_f64(i)?,
+                (
+                    0,
+                    i32::try_from(bin.num_pages()).map_err(|_| SolverError::TooManyFlashPages)?,
+                ),
+            );
             bin_constraint.add(free_space, 1.0);
-            problem.add_constraint(bin_constraint, ComparisonOp::Eq, bin.num_pages() as f64);
+            problem.add_constraint(
+                bin_constraint,
+                ComparisonOp::Eq,
+                bin.num_pages_f64().ok_or(SolverError::TooManyFlashPages)?,
+            );
         }
     }
 
@@ -61,7 +96,9 @@ pub(crate) fn solve<'a>(
                 if a.boot || b.boot {
                     b.boot.cmp(&a.boot)
                 } else {
-                    a.pages.unwrap().cmp(&b.pages.unwrap())
+                    a.required_pages_in_bin(bin)
+                        .unwrap_or(0)
+                        .cmp(&b.required_pages_in_bin(bin).unwrap_or(0))
                 }
             });
             (bin, placed_sections)
@@ -73,7 +110,7 @@ pub(crate) fn solve<'a>(
             sections
                 .iter()
                 .scan(bin.start_address, |next_address, section| {
-                    let set_pages = section.pages.unwrap();
+                    let set_pages = section.required_pages_in_bin(bin).unwrap_or(0);
                     let r = ResolvedSection::new(
                         section.name.clone(),
                         set_pages,
@@ -81,7 +118,7 @@ pub(crate) fn solve<'a>(
                         *next_address,
                         section.linker_name.clone(),
                     );
-                    *next_address += bin.page_size * section.pages.unwrap();
+                    *next_address += bin.page_size * set_pages;
                     Some(r)
                 })
         })
@@ -99,35 +136,58 @@ pub(crate) fn solve_free<'a>(
 
     let mut total_size_constraint = LinearExpr::empty();
     for section in sections.clone() {
-        let var = problem.add_integer_var(1.0, (0, set_pages as i32));
+        // Create variables for every section
+        let var = problem.add_integer_var(
+            1.0,
+            (
+                0,
+                i32::try_from(set_pages).map_err(|_| SolverError::TooManyFlashPages)?,
+            ),
+        );
+        let mut size_constraint = LinearExpr::empty();
+        size_constraint.add(var, 1.0);
+        // If sections have a minimum number of pages, set a minimum constraint on that, else at
+        // least 1 page.
         if let Some(pages) = section.pages {
-            let mut size_constraint = LinearExpr::empty();
-            size_constraint.add(var, 1.0);
-            problem.add_constraint(size_constraint, ComparisonOp::Ge, pages as f64);
+            problem.add_constraint(size_constraint, ComparisonOp::Ge, into_f64(pages)?);
+        } else {
+            problem.add_constraint(size_constraint, ComparisonOp::Ge, 1.0);
         }
         total_size_constraint.add(var, 1.0);
         variables.push(var);
     }
-    problem.add_constraint(total_size_constraint, ComparisonOp::Le, set_pages as f64);
+    // Add a constraint for the maximum number of pages
+    problem.add_constraint(
+        total_size_constraint,
+        ComparisonOp::Le,
+        into_f64(set_pages)?,
+    );
 
+    // Build the relative page size constraint between every section
     for ((i, sec1), (j, sec2)) in sections.clone().enumerate().tuple_combinations() {
         let diff = sec1.relative_pages - sec2.relative_pages;
         let mut relative_constraint = LinearExpr::empty();
         relative_constraint.add(variables[i], 1.0);
         relative_constraint.add(variables[j], -1.0);
-        problem.add_constraint(relative_constraint, ComparisonOp::Eq, diff as f64);
+        problem.add_constraint(relative_constraint, ComparisonOp::Eq, into_f64(diff)?);
     }
     let solution = problem.solve()?;
 
-    #[allow(clippy::cast_possible_truncation)]
-    Ok(sections
+    sections
         .clone()
         .enumerate()
         .map(|(i, s)| {
-            let pages = solution.var_value(variables[i]) as u64;
-            s.clone().set_pages(pages)
+            <f64 as ApproxInto<u64>>::approx_into(solution.var_value(variables[i]))
+                .map_err(|_| SolverError::ConversionError)
+                .map(|pages| s.clone().set_pages(pages))
         })
-        .collect())
+        .collect::<Result<Vec<Section>, _>>()
+}
+
+fn into_f64(value: impl ValueInto<f64>) -> Result<f64, SolverError> {
+    value
+        .value_into()
+        .map_err(|_| SolverError::TooManyFlashPages)
 }
 
 #[cfg(test)]
@@ -159,5 +219,19 @@ mod tests {
         for (i, s) in solved.iter().enumerate() {
             assert_eq!(s.pages, Some(1 + i as u64));
         }
+    }
+
+    #[test]
+    fn test_zero_size() {
+        let sections = (0..5)
+            .map(|i| {
+                Section::new(format!("test{i}"))
+                    .unwrap()
+                    .set_maximize(true)
+                    .set_relative_pages(-2 + i)
+            })
+            .collect::<Vec<_>>();
+        let solved = solve_free(&sections.iter(), 9).unwrap_err();
+        assert_eq!(solved, SolverError::Solver(microlp::Error::Infeasible))
     }
 }
