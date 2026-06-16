@@ -16,6 +16,7 @@ use uom::si::information::byte;
 /// A Memory section.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct Section {
     /// Name of this section
     pub name: String,

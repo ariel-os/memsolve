@@ -13,6 +13,7 @@ use crate::{
 /// List of sections for a requested layout.
 #[derive(Debug, Default, PartialEq, Clone)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct Layout {
     sections: Vec<Section>,
 }

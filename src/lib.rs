@@ -77,6 +77,7 @@ use crate::solver::{solve, solve_free};
 /// Memory layout description.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct Memory {
     chip: Chip,
     #[cfg_attr(feature = "serde", serde(flatten))]
