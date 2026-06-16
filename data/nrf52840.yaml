@@ -3,6 +3,4 @@ chip:
   start_address: 0x0
   total_size: 1024 KiB
   page_size: 4 KiB
-config:
-  ordered: false
 sections: []

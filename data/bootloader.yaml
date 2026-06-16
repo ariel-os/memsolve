@@ -1,7 +1,5 @@
 ---
 sections:
   - name: BOOT
-    bootable: true
-    pages: 4
+    boot: true
     size: 20 KiB
-    address: 0
