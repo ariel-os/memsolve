@@ -232,6 +232,6 @@ mod tests {
             })
             .collect::<Vec<_>>();
         let solved = solve_free(&sections.iter(), 9).unwrap_err();
-        assert_eq!(solved, SolverError::Solver(microlp::Error::Infeasible))
+        assert_eq!(solved, SolverError::Solver(microlp::Error::Infeasible));
     }
 }
