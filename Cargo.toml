@@ -6,7 +6,8 @@ description = "ROM memory layout solver for linker script generation"
 homepage = "https://codeberg.org/bergzand/memsolve/"
 repository = "https://codeberg.org/bergzand/memsolve/"
 license = "MIT OR Apache-2.0"
-categories = ["embedded"]
+keywords = ["linker"]
+categories = ["development-tools::build-utils", "embedded"]
 
 [dependencies]
 conv = "0.3.3"
