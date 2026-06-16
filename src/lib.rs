@@ -84,7 +84,7 @@ pub struct Memory {
 }
 
 /// Memory layout generation errors.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 pub enum MemoryError {
     /// Multiple sections are marked as bootable.
     #[error("multiple sections defined as bootable")]
