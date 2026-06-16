@@ -290,4 +290,38 @@ mod tests {
         assert_eq!(boot.name, "flash");
         assert_eq!(boot.address, 0);
     }
+
+    #[test]
+    fn min_byte_size() {
+        let chip = crate::Chip::new(1, 0, 30).unwrap();
+
+        let mut memory = Memory::new(chip);
+        memory.add_section(Section::new("test").unwrap().set_size(20));
+        let resolved = memory.resolve_layout().unwrap();
+        let sec = &resolved[0];
+        assert_eq!(sec.size, 20);
+        assert_eq!(sec.pages, 20);
+    }
+
+    #[test]
+    fn min_page_size() {
+        let chip = crate::Chip::new(1, 0, 30).unwrap();
+
+        let mut memory = Memory::new(chip);
+        memory.add_section(Section::new("test").unwrap().set_pages(20));
+        let resolved = memory.resolve_layout().unwrap();
+        let sec = &resolved[0];
+        assert_eq!(sec.size, 20);
+        assert_eq!(sec.pages, 20);
+    }
+
+    #[test]
+    fn too_small_memory() {
+        let chip = crate::Chip::new(2, 0, 30).unwrap();
+
+        let mut memory = Memory::new(chip);
+        memory.add_section(Section::new("test").unwrap().set_pages(20));
+        let err = memory.resolve_layout().unwrap_err();
+        assert_eq!(err, MemoryError::MemoryTooSmall);
+    }
 }
