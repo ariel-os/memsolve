@@ -1,14 +1,9 @@
 //! Memory layout description.
-use itertools::Itertools;
 #[cfg(feature = "serde")]
 use serde::Deserialize;
 use std::ops::{Deref, DerefMut, Index};
 
-use crate::{
-    bin::{Bin, MemoryBin},
-    chip::{Chip, PageSize},
-    section::{ResolvedSection, Section, SerdeSection},
-};
+use crate::section::{ResolvedSection, Section, SerdeSection};
 
 #[derive(Debug, PartialEq, Clone)]
 #[cfg_attr(feature = "serde", derive(Deserialize))]
@@ -50,87 +45,12 @@ impl<MetaData: Clone> Layout<MetaData> {
         self.sections.push(section);
     }
 
-    pub(crate) fn resolved_sections(
-        &self,
-    ) -> impl Iterator<Item = ResolvedSection<MetaData>> + Clone {
-        self.iter().filter_map(|s| s.as_resolved().ok())
-    }
-
     pub(crate) fn maximizing_sections(&self) -> impl Iterator<Item = &Section<MetaData>> + Clone {
         self.iter().filter(|s| s.needs_maximizing())
     }
 
     pub(crate) fn allocatable_sections(&self) -> impl Iterator<Item = &Section<MetaData>> + Clone {
         self.iter().filter(|s| s.needs_allocating())
-    }
-
-    pub(crate) fn memory_bins(&self, chip: &Chip) -> Bin {
-        struct FixedSection {
-            start: u64,
-            end: u64,
-        }
-
-        impl FixedSection {
-            fn from_resolved<MetaData: Clone>(resolved: &ResolvedSection<MetaData>) -> Self {
-                FixedSection {
-                    start: resolved.address,
-                    end: resolved.address + resolved.size,
-                }
-            }
-
-            fn space_between(&self, other: &Self) -> u64 {
-                other.start - self.end
-            }
-        }
-
-        // find bins between fixed sections
-        let mut fixed = self
-            .resolved_sections()
-            .map(|s| FixedSection::from_resolved(&s))
-            .collect::<Vec<_>>();
-        fixed.sort_by_key(|a| a.start);
-        let start_address = chip.start_address();
-        if fixed
-            .first()
-            .is_some_and(|first| first.start != start_address)
-            || fixed.is_empty()
-        {
-            fixed.insert(
-                0,
-                FixedSection {
-                    start: start_address,
-                    end: start_address,
-                },
-            );
-        }
-
-        let end = chip.end_address();
-
-        if fixed.last().is_some_and(|last| last.end != end) || fixed.is_empty() {
-            fixed.push(FixedSection { start: end, end });
-        }
-
-        let page_size = match chip.page_size {
-            PageSize::Uniform(quantity) => quantity,
-            PageSize::Heterogeneous(_) => todo!(),
-        };
-        Bin::new(
-            fixed
-                .iter()
-                .tuple_windows()
-                .filter_map(|(s1, s2)| {
-                    let space_between = s1.space_between(s2);
-                    if space_between == 0 {
-                        return None;
-                    }
-                    Some(MemoryBin {
-                        start_address: s1.end,
-                        end_address: s2.start,
-                        page_size,
-                    })
-                })
-                .collect::<Vec<_>>(),
-        )
     }
 
     pub(crate) fn num_pages(&self) -> u64 {

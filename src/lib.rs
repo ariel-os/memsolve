@@ -58,6 +58,7 @@
 #![warn(clippy::pedantic)]
 #![warn(missing_docs)]
 
+use itertools::Itertools as _;
 #[cfg(feature = "serde")]
 use serde::Deserialize;
 use thiserror::Error;
@@ -71,9 +72,10 @@ pub mod layout;
 pub mod section;
 mod solver;
 
-use crate::chip::Chip;
+use crate::bin::{Bin, MemoryBin};
+use crate::chip::{Chip, PageSize};
 use crate::layout::{Layout, ResolvedLayout};
-use crate::section::Section;
+use crate::section::{ResolvedSection, Section};
 use crate::solver::{solve, solve_free};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -150,6 +152,81 @@ impl<MetaData: Clone> Memory<MetaData> {
         self.layout.push(section);
     }
 
+    fn resolved_sections(&self) -> impl Iterator<Item = ResolvedSection<MetaData>> + Clone {
+        self.layout
+            .iter()
+            .filter_map(|s| s.as_resolved(&self.chip).ok())
+    }
+
+    fn memory_bins(&self) -> Bin {
+        struct FixedSection {
+            start: u64,
+            end: u64,
+        }
+
+        impl FixedSection {
+            fn from_resolved<MetaData: Clone>(resolved: &ResolvedSection<MetaData>) -> Self {
+                FixedSection {
+                    start: resolved.address,
+                    end: resolved.address + resolved.size,
+                }
+            }
+
+            fn space_between(&self, other: &Self) -> u64 {
+                other.start - self.end
+            }
+        }
+
+        // find bins between fixed sections
+        let mut fixed = self
+            .resolved_sections()
+            .map(|s| FixedSection::from_resolved(&s))
+            .collect::<Vec<_>>();
+        fixed.sort_by_key(|a| a.start);
+        let start_address = self.chip.start_address();
+        if fixed
+            .first()
+            .is_some_and(|first| first.start != start_address)
+            || fixed.is_empty()
+        {
+            fixed.insert(
+                0,
+                FixedSection {
+                    start: start_address,
+                    end: start_address,
+                },
+            );
+        }
+
+        let end = self.chip.end_address();
+
+        if fixed.last().is_some_and(|last| last.end != end) || fixed.is_empty() {
+            fixed.push(FixedSection { start: end, end });
+        }
+
+        let page_size = match self.chip.page_size {
+            PageSize::Uniform(quantity) => quantity,
+            PageSize::Heterogeneous(_) => todo!(),
+        };
+        Bin::new(
+            fixed
+                .iter()
+                .tuple_windows()
+                .filter_map(|(s1, s2)| {
+                    let space_between = s1.space_between(s2);
+                    if space_between == 0 {
+                        return None;
+                    }
+                    Some(MemoryBin {
+                        start_address: s1.end,
+                        end_address: s2.start,
+                        page_size,
+                    })
+                })
+                .collect::<Vec<_>>(),
+        )
+    }
+
     /// Returns a mutable reference to the layout.
     #[must_use]
     pub fn layout_mut(&mut self) -> &mut Layout<MetaData> {
@@ -177,7 +254,7 @@ impl<MetaData: Clone> Memory<MetaData> {
         if self.layout.num_bootable() > 1 {
             return Err(MemoryError::MultipleBootable);
         }
-        let bins = self.layout.memory_bins(&self.chip);
+        let bins = self.memory_bins();
 
         let sections = self.layout.allocatable_sections();
 
@@ -214,7 +291,7 @@ impl<MetaData: Clone> Memory<MetaData> {
             }
             free_pages = next_free_pages;
         };
-        resolved.extend(self.layout.resolved_sections());
+        resolved.extend(self.resolved_sections());
         resolved.sort_by_key(|s| s.address);
 
         Ok(resolved)
@@ -246,7 +323,7 @@ mod tests {
             })
             .for_each(|s| memory.add_section(s));
 
-        let bins = memory.layout.memory_bins(&memory.chip);
+        let bins = memory.memory_bins();
         assert_eq!(bins.len(), 3);
         assert_eq!(bins[0].start_address, 1000);
         assert_eq!(bins[0].end_address, 2000);

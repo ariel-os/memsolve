@@ -80,6 +80,12 @@ impl Chip {
     pub fn end_address(&self) -> u64 {
         self.start_address + self.total_size
     }
+
+    /// Returns the page size for a given address of this chip.
+    #[must_use]
+    pub fn page_size(&self, address: u64) -> u64 {
+        self.page_size.page_size(address)
+    }
 }
 
 /// Chip flash page size layout.
@@ -92,6 +98,24 @@ pub enum PageSize {
     /// Chip contains flash pages with different sizes.
     #[cfg_attr(feature = "serde", serde(deserialize_with = "deser_vec_information"))]
     Heterogeneous(Vec<u64>),
+}
+
+impl PageSize {
+    fn page_size(&self, address: u64) -> u64 {
+        match self {
+            PageSize::Uniform(page) => return *page,
+            PageSize::Heterogeneous(pages) => {
+                let mut cur_address = 0;
+                for page in pages {
+                    if cur_address <= address {
+                        return *page;
+                    }
+                    cur_address += page;
+                }
+                return *pages.last().unwrap_or(&0u64);
+            }
+        }
+    }
 }
 
 #[cfg(test)]

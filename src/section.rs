@@ -2,6 +2,7 @@
 //!
 //! Sections can be maximized, to take up as much flash space as possible within the constraints.
 
+use crate::chip::Chip;
 #[cfg(feature = "uom")]
 use crate::information::Information;
 #[cfg(feature = "serde")]
@@ -255,7 +256,8 @@ impl<MetaData: Clone> Section<MetaData> {
     /// The section location is fully defined
     #[must_use]
     pub fn is_resolved(&self) -> bool {
-        self.address.is_some() && self.pages.is_some() && self.size.is_some() && !self.maximize
+        let resolved_size = self.pages.is_some() || self.size.is_some();
+        self.address.is_some() && resolved_size && !self.maximize
     }
 
     /// Returns true if this section needs to be maximized.
@@ -270,10 +272,19 @@ impl<MetaData: Clone> Section<MetaData> {
         !self.maximize && self.address.is_none()
     }
 
-    pub(crate) fn as_resolved(&self) -> Result<ResolvedSection<MetaData>, SectionError> {
-        let (Some(pages), Some(size), Some(address)) = (self.pages, self.size, self.address) else {
+    pub(crate) fn as_resolved(
+        &self,
+        chip: &Chip,
+    ) -> Result<ResolvedSection<MetaData>, SectionError> {
+        if !self.is_resolved() {
+            return Err(SectionError::UnresolvedSection);
+        }
+        let Some(address) = self.address else {
             return Err(SectionError::UnresolvedSection);
         };
+
+        let (pages, size) = self.resolve_page_and_size(chip)?;
+
         Ok(ResolvedSection {
             name: self.name.clone(),
             pages,
@@ -293,6 +304,28 @@ impl<MetaData: Clone> Section<MetaData> {
             Ok(std::cmp::max(page_required, size_pages))
         }
     }
+
+    fn resolve_page_and_size(&self, chip: &Chip) -> Result<(u64, u64), SectionError> {
+        let Some(address) = self.address else {
+            return Err(SectionError::UnresolvedSection);
+        };
+        let (pages, size) = match (self.pages, self.size) {
+            (None, None) => return Err(SectionError::UnresolvedSection),
+            (None, Some(size)) => (self.required_pages(chip.page_size(address))?, size),
+            (Some(pages), None) => (pages, chip.page_size(address) * pages),
+            (Some(pages), Some(size)) => {
+                // size of the pages requested
+                let size_of_pages = chip.page_size(address) * pages;
+                if size > size_of_pages {
+                    (self.required_pages(chip.page_size(address))?, size)
+                } else {
+                    (pages, size_of_pages)
+                }
+            }
+        };
+        Ok((pages, size))
+    }
+
     pub(crate) fn required_pages_in_bin(
         &self,
         bin: &crate::bin::MemoryBin,
