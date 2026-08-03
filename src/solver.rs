@@ -13,7 +13,7 @@ pub(super) enum SolverError {
     #[error("solver error: {0}")]
     Solver(#[from] microlp::Error),
     #[error("too many pages in section {0} for solver")]
-    TooManySectionPages(Section),
+    TooManySectionPages(Section<()>),
     #[error("too many pages in the chip flash for solver")]
     TooManyFlashPages,
     #[error("no free regions")]
@@ -25,9 +25,9 @@ pub(super) enum SolverError {
     ConversionError,
 }
 
-pub(crate) fn solve<'a>(
+pub(crate) fn solve<'a, MetaData: Clone + 'a>(
     bins: &Bin,
-    sections: &(impl Iterator<Item = &'a Section> + Clone),
+    sections: &(impl Iterator<Item = &'a Section<MetaData>> + Clone),
 ) -> Result<ResolvedLayout, SolverError> {
     let mut problem = Problem::new(OptimizationDirection::Minimize);
     let num_bins = bins.len();
@@ -45,7 +45,9 @@ pub(crate) fn solve<'a>(
                 section
                     .required_pages_in_bin(bin)?
                     .value_into()
-                    .map_err(|_| SolverError::TooManySectionPages(section.clone()))?,
+                    .map_err(|_| {
+                        SolverError::TooManySectionPages(section.clone().clear_metadata())
+                    })?,
             );
         }
         if bin == largest_bin {
@@ -82,11 +84,11 @@ pub(crate) fn solve<'a>(
 
     let solution = problem.solve()?;
 
-    let resolved: Vec<(&crate::bin::MemoryBin, Vec<&Section>)> = bins
+    let resolved: Vec<(&crate::bin::MemoryBin, Vec<&Section<_>>)> = bins
         .iter()
         .enumerate()
         .map(|(i, bin)| {
-            let mut placed_sections: Vec<&Section> = Vec::new();
+            let mut placed_sections: Vec<&Section<_>> = Vec::new();
             for (j, section) in sections.clone().enumerate() {
                 if solution.var_value(variables[i][j]) > 0.0 {
                     placed_sections.push(section);
@@ -127,10 +129,10 @@ pub(crate) fn solve<'a>(
     Ok(resolved.into())
 }
 
-pub(crate) fn solve_free<'a>(
-    sections: &(impl Iterator<Item = &'a Section> + Clone),
+pub(crate) fn solve_free<'a, MetaData: Clone + 'a>(
+    sections: &(impl Iterator<Item = &'a Section<MetaData>> + Clone),
     set_pages: u64,
-) -> Result<Vec<Section>, SolverError> {
+) -> Result<Vec<Section<MetaData>>, SolverError> {
     let mut problem = Problem::new(OptimizationDirection::Maximize);
     let mut variables = Vec::with_capacity(sections.clone().count());
 
@@ -181,7 +183,7 @@ pub(crate) fn solve_free<'a>(
                 .map_err(|_| SolverError::ConversionError)
                 .map(|pages| s.clone().set_pages(pages))
         })
-        .collect::<Result<Vec<Section>, _>>()
+        .collect::<Result<Vec<Section<MetaData>>, _>>()
 }
 
 fn into_f64(value: impl ValueInto<f64>) -> Result<f64, SolverError> {

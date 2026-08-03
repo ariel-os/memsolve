@@ -8,16 +8,16 @@ use crate::information::Information;
 #[cfg(feature = "serde")]
 use crate::information::deser_option_information;
 #[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use thiserror::Error;
 #[cfg(feature = "uom")]
 use uom::si::information::byte;
 
 /// A Memory section.
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-pub struct Section {
+pub(crate) struct SerdeSection {
     /// Name of this section
     pub name: String,
     #[cfg_attr(feature = "serde", serde(default))]
@@ -39,6 +39,47 @@ pub struct Section {
     pub(crate) linker_name: Option<String>,
 }
 
+impl From<SerdeSection> for Section<()> {
+    fn from(value: SerdeSection) -> Self {
+        Self {
+            name: value.name,
+            boot: value.boot,
+            maximize: value.maximize,
+            pages: value.pages,
+            size: value.size,
+            address: value.address,
+            relative_pages: value.relative_pages,
+            linker_name: value.linker_name,
+            metadata: (),
+        }
+    }
+}
+
+/// A Memory section.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Section<MetaData: Clone> {
+    /// Name of this section
+    pub name: String,
+    pub(crate) boot: bool,
+    pub(crate) maximize: bool,
+    pub(crate) pages: Option<u64>,
+    /// The size of the section in bytes
+    pub(crate) size: Option<u64>,
+    pub(crate) address: Option<u64>,
+    pub(crate) relative_pages: i64,
+    pub(crate) linker_name: Option<String>,
+    pub(crate) metadata: MetaData,
+}
+
+impl<'de> Deserialize<'de> for Section<()> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        SerdeSection::deserialize(deserializer).map(Into::into)
+    }
+}
+
 /// Errors related to sections
 #[derive(Error, Debug, PartialEq)]
 pub enum SectionError {
@@ -53,7 +94,7 @@ pub enum SectionError {
     NoSizeBound,
 }
 
-impl Section {
+impl Section<()> {
     /// Create a new section.
     ///
     /// The `name` of the section must be a valid ``LD_MEMORY`` memory name.
@@ -76,9 +117,12 @@ impl Section {
             address: None,
             relative_pages: 0,
             linker_name: None,
+            metadata: (),
         })
     }
+}
 
+impl<MetaData: Clone> Section<MetaData> {
     /// Extends the section with the requirements from another.
     ///
     /// boot and maximize are OR'ed between the two instances. number of pages and byte size take
@@ -255,9 +299,27 @@ impl Section {
     ) -> Result<u64, SectionError> {
         self.required_pages(bin.page_size)
     }
+
+    pub(crate) fn replace_metadata<NewData: Clone>(self, data: NewData) -> Section<NewData> {
+        Section {
+            name: self.name,
+            boot: self.boot,
+            maximize: self.maximize,
+            pages: self.pages,
+            size: self.size,
+            address: self.address,
+            relative_pages: self.relative_pages,
+            linker_name: self.linker_name,
+            metadata: data,
+        }
+    }
+
+    pub(crate) fn clear_metadata(self) -> Section<()> {
+        self.replace_metadata(())
+    }
 }
 
-impl std::fmt::Display for Section {
+impl<MetaData: Clone> std::fmt::Display for Section<MetaData> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Section({})", self.name)
     }
@@ -387,7 +449,7 @@ mod tests {
         "pages": 2
         "size": 3 KiB
         "#;
-        let section: Section = yaml_serde::from_str(input).unwrap();
+        let section: Section<_> = yaml_serde::from_str(input).unwrap();
         assert_eq!(section.name, "test");
         assert!(!section.boot);
         assert_eq!(section.pages, Some(2));

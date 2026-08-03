@@ -59,7 +59,7 @@
 #![warn(missing_docs)]
 
 #[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use thiserror::Error;
 
 mod bin;
@@ -76,12 +76,36 @@ use crate::solver::{solve, solve_free};
 
 /// Memory layout description.
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-pub struct Memory {
+struct SerdeMemory {
     chip: Chip,
     #[cfg_attr(feature = "serde", serde(flatten))]
-    layout: Layout,
+    layout: layout::SerdeLayout,
+}
+
+impl From<SerdeMemory> for Memory<()> {
+    fn from(value: SerdeMemory) -> Self {
+        Memory {
+            chip: value.chip,
+            layout: value.layout.into(),
+        }
+    }
+}
+
+/// Memory layout description.
+pub struct Memory<MetaData: Clone> {
+    chip: Chip,
+    layout: Layout<MetaData>,
+}
+
+impl<'de> Deserialize<'de> for Memory<()> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        SerdeMemory::deserialize(deserializer).map(Into::into)
+    }
 }
 
 /// Memory layout generation errors.
@@ -104,7 +128,7 @@ pub enum MemoryError {
     AddressTooLarge,
 }
 
-impl Memory {
+impl<MetaData: Clone> Memory<MetaData> {
     /// Create a new memory.
     #[must_use]
     pub fn new(chip: Chip) -> Self {
@@ -115,24 +139,24 @@ impl Memory {
     }
 
     /// Set the current layout used by the memory.
-    pub fn set_layout(&mut self, layout: Layout) {
+    pub fn set_layout(&mut self, layout: Layout<MetaData>) {
         self.layout = layout;
     }
 
     /// Add a memory section to the layout in the memory.
-    pub fn add_section(&mut self, section: Section) {
+    pub fn add_section(&mut self, section: Section<MetaData>) {
         self.layout.push(section);
     }
 
     /// Returns a mutable reference to the layout.
     #[must_use]
-    pub fn layout_mut(&mut self) -> &mut Layout {
+    pub fn layout_mut(&mut self) -> &mut Layout<MetaData> {
         &mut self.layout
     }
 
     /// Returns a reference to the layout.
     #[must_use]
-    pub fn layout(&self) -> &Layout {
+    pub fn layout(&self) -> &Layout<MetaData> {
         &self.layout
     }
 

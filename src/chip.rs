@@ -12,7 +12,7 @@ use uom::si::information::byte;
 
 /// Describes the memory layout of a chip / microcontroller.
 #[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub struct Chip {
     #[cfg_attr(feature = "serde", serde(default))]

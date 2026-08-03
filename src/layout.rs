@@ -1,32 +1,52 @@
 //! Memory layout description.
 use itertools::Itertools;
 #[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::ops::{Deref, DerefMut, Index};
 
 use crate::{
     bin::{Bin, MemoryBin},
     chip::{Chip, PageSize},
-    section::{ResolvedSection, Section},
+    section::{ResolvedSection, Section, SerdeSection},
 };
 
-/// List of sections for a requested layout.
-#[derive(Debug, Default, PartialEq, Clone)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Debug, PartialEq, Clone)]
+#[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
-pub struct Layout {
-    sections: Vec<Section>,
+pub(crate) struct SerdeLayout {
+    sections: Vec<SerdeSection>,
 }
 
-impl Layout {
+impl From<SerdeLayout> for Layout<()> {
+    fn from(value: SerdeLayout) -> Self {
+        Layout::new(value.sections.into_iter().map(Into::into).collect())
+    }
+}
+
+/// List of sections for a requested layout.
+#[derive(Debug, PartialEq, Clone)]
+pub struct Layout<MetaData: Clone> {
+    sections: Vec<Section<MetaData>>,
+}
+
+impl<'de> Deserialize<'de> for Layout<()> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        SerdeLayout::deserialize(deserializer).map(Into::into)
+    }
+}
+
+impl<MetaData: Clone> Layout<MetaData> {
     /// Create a new set of sections.
     #[must_use]
-    pub fn new(sections: Vec<Section>) -> Self {
+    pub fn new(sections: Vec<Section<MetaData>>) -> Self {
         Self { sections }
     }
 
     /// Extend the sections with a section.
-    pub fn push(&mut self, section: Section) {
+    pub fn push(&mut self, section: Section<MetaData>) {
         self.sections.push(section);
     }
 
@@ -34,11 +54,11 @@ impl Layout {
         self.iter().filter_map(|s| s.as_resolved().ok())
     }
 
-    pub(crate) fn maximizing_sections(&self) -> impl Iterator<Item = &Section> + Clone {
+    pub(crate) fn maximizing_sections(&self) -> impl Iterator<Item = &Section<MetaData>> + Clone {
         self.iter().filter(|s| s.needs_maximizing())
     }
 
-    pub(crate) fn allocatable_sections(&self) -> impl Iterator<Item = &Section> + Clone {
+    pub(crate) fn allocatable_sections(&self) -> impl Iterator<Item = &Section<MetaData>> + Clone {
         self.iter().filter(|s| s.needs_allocating())
     }
 
@@ -106,11 +126,11 @@ impl Layout {
     }
 
     /// Searches for a section with the provided name.
-    pub fn find(&self, name: &impl PartialEq<String>) -> Option<&Section> {
+    pub fn find(&self, name: &impl PartialEq<String>) -> Option<&Section<MetaData>> {
         self.iter().find(|s| name.eq(&s.name))
     }
 
-    fn find_mut(&mut self, name: &impl PartialEq<String>) -> Option<&mut Section> {
+    fn find_mut(&mut self, name: &impl PartialEq<String>) -> Option<&mut Section<MetaData>> {
         self.iter_mut().find(|s| name.eq(&s.name))
     }
 
@@ -129,24 +149,32 @@ impl Layout {
     }
 }
 
-impl Index<usize> for Layout {
-    type Output = Section;
+impl<MetaData: Clone> Index<usize> for Layout<MetaData> {
+    type Output = Section<MetaData>;
 
     fn index(&self, index: usize) -> &Self::Output {
         self.sections.index(index)
     }
 }
 
-impl Deref for Layout {
-    type Target = [Section];
+impl<MetaData: Clone> Deref for Layout<MetaData> {
+    type Target = [Section<MetaData>];
 
     fn deref(&self) -> &Self::Target {
         self.sections.deref()
     }
 }
 
-impl DerefMut for Layout {
+impl<MetaData: Clone> DerefMut for Layout<MetaData> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.sections.deref_mut()
+    }
+}
+
+impl<MetaData: Clone> Default for Layout<MetaData> {
+    fn default() -> Self {
+        Self {
+            sections: Vec::new(),
+        }
     }
 }
