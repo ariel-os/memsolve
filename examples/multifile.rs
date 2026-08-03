@@ -15,12 +15,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = Cli::parse();
     let bf = File::open(args.base)?;
     println!("reading base layout");
-    let mut base: Memory = yaml_serde::from_reader(bf)?;
+    let mut base: Memory<_> = yaml_serde::from_reader(bf)?;
 
     println!("Reading extra files");
     for extra in args.sections {
         let f = File::open(extra)?;
-        let sections: Layout = yaml_serde::from_reader(f)?;
+        let sections: Layout<_> = yaml_serde::from_reader(f)?;
         base.layout_mut().merge(&sections);
     }
 
