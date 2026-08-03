@@ -15,6 +15,7 @@ required-features = ["serde"]
 
 [dependencies]
 conv = "0.3.3"
+esp-idf-part = { version = "0.6.0", optional = true }
 itertools = "0.14.0"
 ld-memory = "0.2.9"
 microlp = "0.4.0"
@@ -27,7 +28,8 @@ clap = { version = "4.6.1", features = ["derive"] }
 yaml_serde = "0.10.4"
 
 [features]
-default = ["serde"]
+default = ["serde", "esp"]
+esp = ["dep:esp-idf-part"]
 serde = ["dep:serde", "dep:uom", "uom/serde"]
 uom = ["dep:uom"]
 

@@ -64,6 +64,8 @@ use thiserror::Error;
 
 mod bin;
 pub mod chip;
+#[cfg(feature = "esp")]
+mod esp;
 mod information;
 pub mod layout;
 pub mod section;
@@ -74,7 +76,6 @@ use crate::layout::{Layout, ResolvedLayout};
 use crate::section::Section;
 use crate::solver::{solve, solve_free};
 
-/// Memory layout description.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
@@ -94,6 +95,7 @@ impl From<SerdeMemory> for Memory<()> {
 }
 
 /// Memory layout description.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Memory<MetaData: Clone> {
     chip: Chip,
     layout: Layout<MetaData>,

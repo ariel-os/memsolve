@@ -1,0 +1,126 @@
+use esp_idf_part::{Flags, Partition, PartitionTable, SubType, Type};
+
+use crate::{
+    layout::ResolvedLayout,
+    section::{ResolvedSection, Section},
+};
+
+#[derive(Clone, Debug)]
+pub struct EspMetaData {
+    pub partition_type: esp_idf_part::Type,
+    pub partition_subtype: esp_idf_part::SubType,
+    pub flags: esp_idf_part::Flags,
+}
+
+impl EspMetaData {
+    pub fn new(partition_type: Type, partition_subtype: SubType, flags: Flags) -> Self {
+        Self {
+            partition_type,
+            partition_subtype,
+            flags,
+        }
+    }
+
+    pub fn set_flags(&mut self, flags: Flags) {
+        self.flags = flags;
+    }
+}
+
+impl Section<()> {
+    /// Add ESP partition data to this section.
+    #[must_use]
+    pub fn add_esp_metadata(
+        self,
+        partition_type: Type,
+        subtype: impl Into<SubType>,
+    ) -> Section<EspMetaData> {
+        let metadata = EspMetaData::new(partition_type, subtype.into(), Flags::empty());
+        self.replace_metadata(metadata)
+    }
+}
+
+impl Section<EspMetaData> {
+    /// set ESP partition flags on this section.
+    #[must_use]
+    pub fn set_esp_flags(mut self, flags: Flags) -> Section<EspMetaData> {
+        self.metadata.set_flags(flags);
+        self
+    }
+}
+
+impl ResolvedSection<EspMetaData> {
+    /// Generate a [`esp_idf_part::Partition`] from this section.
+    #[cfg(feature = "esp")]
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn as_esp_partition(&self) -> Partition {
+        Partition::new(
+            &self.linker_name,
+            self.metadata.partition_type,
+            self.metadata.partition_subtype,
+            self.address as u32,
+            self.size as u32,
+            self.metadata.flags,
+        )
+    }
+}
+
+impl ResolvedLayout<EspMetaData> {
+    /// Generate a [`esp_idf_part::PartitionTable`] from this layout.
+    #[must_use]
+    pub fn into_esp_partition(&self) -> PartitionTable {
+        let partitions = self
+            .sections
+            .iter()
+            .map(ResolvedSection::as_esp_partition)
+            .collect();
+        PartitionTable::new(partitions)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use esp_idf_part::{AppType, DataType};
+
+    use crate::{Memory, chip::Chip};
+
+    use super::*;
+
+    #[test]
+    fn default_layout() {
+        let esp_single_factory_app = "# ESP-IDF Partition Table\n\
+        # Name,Type,SubType,Offset,Size,Flags\n\
+        nvs,data,nvs,0x9000,0x6000,\n\
+        phy_init,data,phy,0xf000,0x1000,\n\
+        factory,app,factory,0x10000,0x100000,\n\
+        ";
+
+        let nvs = Section::new("nvs")
+            .unwrap()
+            .set_pages(48)
+            .set_size(0x6000)
+            .set_address(0x9000)
+            .add_esp_metadata(Type::Data, DataType::Nvs);
+        let phy_init = Section::new("phy_init")
+            .unwrap()
+            .set_pages(8)
+            .set_size(0x1000)
+            .set_address(0xf000)
+            .add_esp_metadata(Type::Data, DataType::Phy);
+        let factory = Section::new("factory")
+            .unwrap()
+            .set_size(1024 * 1024)
+            .add_esp_metadata(Type::App, AppType::Factory);
+
+        let chip = Chip::new(512, 0, 2048 * 1048).unwrap();
+        let mut memory = Memory::new(chip);
+        memory.add_section(nvs);
+        memory.add_section(phy_init);
+        memory.add_section(factory);
+
+        let resolved = memory.resolve_layout().unwrap();
+
+        let csv = resolved.into_esp_partition().to_csv().unwrap();
+        assert_eq!(&csv, esp_single_factory_app);
+    }
+}
