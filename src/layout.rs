@@ -198,7 +198,7 @@ impl<MetaData: Clone> Default for Layout<MetaData> {
 /// Defines a fully resolved layout.
 #[derive(Clone, Debug)]
 pub struct ResolvedLayout<MetaData: Clone> {
-    sections: Vec<ResolvedSection<MetaData>>,
+    pub(crate) sections: Vec<ResolvedSection<MetaData>>,
 }
 
 impl<MetaData: Clone> ResolvedLayout<MetaData> {
