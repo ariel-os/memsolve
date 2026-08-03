@@ -1,7 +1,8 @@
 //! Memory layout solver
 use crate::{
     bin::Bin,
-    section::{ResolvedLayout, ResolvedSection, Section, SectionError},
+    layout::ResolvedLayout,
+    section::{ResolvedSection, Section, SectionError},
 };
 use conv::{ApproxInto, ValueInto};
 use itertools::Itertools;
@@ -28,7 +29,7 @@ pub(super) enum SolverError {
 pub(crate) fn solve<'a, MetaData: Clone + 'a>(
     bins: &Bin,
     sections: &(impl Iterator<Item = &'a Section<MetaData>> + Clone),
-) -> Result<ResolvedLayout, SolverError> {
+) -> Result<ResolvedLayout<MetaData>, SolverError> {
     let mut problem = Problem::new(OptimizationDirection::Minimize);
     let num_bins = bins.len();
     let largest_bin = bins.largest_bin().ok_or(SolverError::NoAllocationRegions)?;
@@ -119,6 +120,7 @@ pub(crate) fn solve<'a, MetaData: Clone + 'a>(
                         bin.page_size * set_pages,
                         *next_address,
                         section.linker_name.clone(),
+                        section.metadata.clone(),
                     );
                     *next_address += bin.page_size * set_pages;
                     Some(r)

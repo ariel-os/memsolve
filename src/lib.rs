@@ -70,8 +70,8 @@ pub mod section;
 mod solver;
 
 use crate::chip::Chip;
-use crate::layout::Layout;
-use crate::section::{ResolvedLayout, Section};
+use crate::layout::{Layout, ResolvedLayout};
+use crate::section::Section;
 use crate::solver::{solve, solve_free};
 
 /// Memory layout description.
@@ -170,7 +170,7 @@ impl<MetaData: Clone> Memory<MetaData> {
     /// - [`MemoryError::MemoryTooSmall`]: When the chip does not have sufficient memory available to fit all
     ///   sections.
     /// - [`MemoryError::UnresolvableLayout`]: When the requirements can not be resolved into a full layout.
-    pub fn resolve_layout(&self) -> Result<ResolvedLayout, MemoryError> {
+    pub fn resolve_layout(&self) -> Result<ResolvedLayout<MetaData>, MemoryError> {
         // Fix bootable section to first address
         if self.layout.num_bootable() > 1 {
             return Err(MemoryError::MultipleBootable);

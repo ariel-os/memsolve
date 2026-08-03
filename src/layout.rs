@@ -50,7 +50,9 @@ impl<MetaData: Clone> Layout<MetaData> {
         self.sections.push(section);
     }
 
-    pub(crate) fn resolved_sections(&self) -> impl Iterator<Item = ResolvedSection> + Clone {
+    pub(crate) fn resolved_sections(
+        &self,
+    ) -> impl Iterator<Item = ResolvedSection<MetaData>> + Clone {
         self.iter().filter_map(|s| s.as_resolved().ok())
     }
 
@@ -63,33 +65,49 @@ impl<MetaData: Clone> Layout<MetaData> {
     }
 
     pub(crate) fn memory_bins(&self, chip: &Chip) -> Bin {
+        struct FixedSection {
+            start: u64,
+            end: u64,
+        }
+
+        impl FixedSection {
+            fn from_resolved<MetaData: Clone>(resolved: &ResolvedSection<MetaData>) -> Self {
+                FixedSection {
+                    start: resolved.address,
+                    end: resolved.address + resolved.size,
+                }
+            }
+
+            fn space_between(&self, other: &Self) -> u64 {
+                other.start - self.end
+            }
+        }
+
         // find bins between fixed sections
-        let mut fixed = self.resolved_sections().collect::<Vec<_>>();
-        fixed.sort_by_key(|a| a.address);
+        let mut fixed = self
+            .resolved_sections()
+            .map(|s| FixedSection::from_resolved(&s))
+            .collect::<Vec<_>>();
+        fixed.sort_by_key(|a| a.start);
         let start_address = chip.start_address();
         if fixed
             .first()
-            .is_some_and(|first| first.address != start_address)
+            .is_some_and(|first| first.start != start_address)
             || fixed.is_empty()
         {
             fixed.insert(
                 0,
-                ResolvedSection::new("a".into(), 0, 0, start_address, None),
+                FixedSection {
+                    start: start_address,
+                    end: start_address,
+                },
             );
         }
 
-        if fixed
-            .last()
-            .is_some_and(|last| (last.address + last.size) != chip.end_address())
-            || fixed.is_empty()
-        {
-            fixed.push(ResolvedSection::new(
-                "z".into(),
-                0,
-                0,
-                chip.end_address(),
-                None,
-            ));
+        let end = chip.end_address();
+
+        if fixed.last().is_some_and(|last| last.end != end) || fixed.is_empty() {
+            fixed.push(FixedSection { start: end, end });
         }
 
         let page_size = match chip.page_size {
@@ -105,11 +123,9 @@ impl<MetaData: Clone> Layout<MetaData> {
                     if space_between == 0 {
                         return None;
                     }
-                    let start_address = s1.next_free_address();
-                    let end_address = space_between + start_address;
                     Some(MemoryBin {
-                        start_address,
-                        end_address,
+                        start_address: s1.end,
+                        end_address: s2.start,
                         page_size,
                     })
                 })
@@ -181,13 +197,13 @@ impl<MetaData: Clone> Default for Layout<MetaData> {
 
 /// Defines a fully resolved layout.
 #[derive(Clone, Debug)]
-pub struct ResolvedLayout {
-    sections: Vec<ResolvedSection>,
+pub struct ResolvedLayout<MetaData: Clone> {
+    sections: Vec<ResolvedSection<MetaData>>,
 }
 
-impl ResolvedLayout {
+impl<MetaData: Clone> ResolvedLayout<MetaData> {
     /// Extend this resolved layout with other resolved sections.
-    pub fn extend(&mut self, extend: impl Iterator<Item = ResolvedSection>) {
+    pub fn extend(&mut self, extend: impl Iterator<Item = ResolvedSection<MetaData>>) {
         self.sections.extend(extend);
     }
 
@@ -202,29 +218,29 @@ impl ResolvedLayout {
     }
 }
 
-impl From<Vec<ResolvedSection>> for ResolvedLayout {
-    fn from(value: Vec<ResolvedSection>) -> Self {
+impl<MetaData: Clone> From<Vec<ResolvedSection<MetaData>>> for ResolvedLayout<MetaData> {
+    fn from(value: Vec<ResolvedSection<MetaData>>) -> Self {
         Self { sections: value }
     }
 }
 
-impl Index<usize> for ResolvedLayout {
-    type Output = ResolvedSection;
+impl<MetaData: Clone> Index<usize> for ResolvedLayout<MetaData> {
+    type Output = ResolvedSection<MetaData>;
 
     fn index(&self, index: usize) -> &Self::Output {
         self.sections.index(index)
     }
 }
 
-impl Deref for ResolvedLayout {
-    type Target = [ResolvedSection];
+impl<MetaData: Clone> Deref for ResolvedLayout<MetaData> {
+    type Target = [ResolvedSection<MetaData>];
 
     fn deref(&self) -> &Self::Target {
         self.sections.deref()
     }
 }
 
-impl DerefMut for ResolvedLayout {
+impl<MetaData: Clone> DerefMut for ResolvedLayout<MetaData> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.sections.deref_mut()
     }

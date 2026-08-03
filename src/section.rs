@@ -270,7 +270,7 @@ impl<MetaData: Clone> Section<MetaData> {
         !self.maximize && self.address.is_none()
     }
 
-    pub(crate) fn as_resolved(&self) -> Result<ResolvedSection, SectionError> {
+    pub(crate) fn as_resolved(&self) -> Result<ResolvedSection<MetaData>, SectionError> {
         let (Some(pages), Some(size), Some(address)) = (self.pages, self.size, self.address) else {
             return Err(SectionError::UnresolvedSection);
         };
@@ -280,6 +280,7 @@ impl<MetaData: Clone> Section<MetaData> {
             size,
             address,
             linker_name: self.linker_name.as_ref().unwrap_or(&self.name).clone(),
+            metadata: self.metadata.clone(),
         })
     }
 
@@ -326,7 +327,7 @@ impl<MetaData: Clone> std::fmt::Display for Section<MetaData> {
 
 /// A fully resolved memory section
 #[derive(Debug, Clone, PartialEq)]
-pub struct ResolvedSection {
+pub struct ResolvedSection<MetaData: Clone> {
     /// Name of this section.
     pub name: String,
     /// Number of pages this section uses.
@@ -337,15 +338,19 @@ pub struct ResolvedSection {
     pub address: u64,
     /// Linker script section name.
     pub linker_name: String,
+
+    /// Extra metadata
+    pub metadata: MetaData,
 }
 
-impl ResolvedSection {
+impl<MetaData: Clone> ResolvedSection<MetaData> {
     pub(crate) fn new(
         name: String,
         pages: u64,
         size: u64,
         address: u64,
         linker_name: Option<String>,
+        metadata: MetaData,
     ) -> Self {
         let linker_name = linker_name.unwrap_or(name.clone());
         Self {
@@ -354,20 +359,8 @@ impl ResolvedSection {
             size,
             address,
             linker_name,
+            metadata,
         }
-    }
-
-    pub(crate) fn space_between(&self, other: &Self) -> u64 {
-        let (first, second) = if self.address < other.address {
-            (self, other)
-        } else {
-            (other, self)
-        };
-        second.address - first.next_free_address()
-    }
-
-    pub(crate) fn next_free_address(&self) -> u64 {
-        self.address + self.size
     }
 
     /// Generate a [`ld_memory::MemorySection`] from this section.
