@@ -97,13 +97,11 @@ mod tests {
 
         let nvs = Section::new("nvs")
             .unwrap()
-            .set_pages(48)
             .set_size(0x6000)
             .set_address(0x9000)
             .add_esp_metadata(Type::Data, DataType::Nvs);
         let phy_init = Section::new("phy_init")
             .unwrap()
-            .set_pages(8)
             .set_size(0x1000)
             .set_address(0xf000)
             .add_esp_metadata(Type::Data, DataType::Phy);
