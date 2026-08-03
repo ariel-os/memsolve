@@ -178,3 +178,54 @@ impl<MetaData: Clone> Default for Layout<MetaData> {
         }
     }
 }
+
+/// Defines a fully resolved layout.
+#[derive(Clone, Debug)]
+pub struct ResolvedLayout {
+    sections: Vec<ResolvedSection>,
+}
+
+impl ResolvedLayout {
+    /// Extend this resolved layout with other resolved sections.
+    pub fn extend(&mut self, extend: impl Iterator<Item = ResolvedSection>) {
+        self.sections.extend(extend);
+    }
+
+    /// Generate a [`ld_memory::Memory`] from this layout.
+    #[must_use]
+    pub fn into_memory(&self) -> ld_memory::Memory {
+        let mut memory = ld_memory::Memory::new();
+        for s in &self.sections {
+            memory = memory.add_section(s.as_memory_section());
+        }
+        memory
+    }
+}
+
+impl From<Vec<ResolvedSection>> for ResolvedLayout {
+    fn from(value: Vec<ResolvedSection>) -> Self {
+        Self { sections: value }
+    }
+}
+
+impl Index<usize> for ResolvedLayout {
+    type Output = ResolvedSection;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.sections.index(index)
+    }
+}
+
+impl Deref for ResolvedLayout {
+    type Target = [ResolvedSection];
+
+    fn deref(&self) -> &Self::Target {
+        self.sections.deref()
+    }
+}
+
+impl DerefMut for ResolvedLayout {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.sections.deref_mut()
+    }
+}
