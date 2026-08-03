@@ -103,7 +103,7 @@ impl Section<()> {
     /// - [`SectionError::InvalidSectionName`]: when the `name` is not valid.
     pub fn new(name: impl Into<String>) -> Result<Self, SectionError> {
         let name = name.into();
-        if name.chars().any(|c| !c.is_ascii_alphanumeric()) {
+        if name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '_') {
             return Err(SectionError::InvalidSectionName);
         }
 
