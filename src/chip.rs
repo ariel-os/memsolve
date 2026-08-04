@@ -103,7 +103,7 @@ pub enum PageSize {
 impl PageSize {
     fn page_size(&self, address: u64) -> u64 {
         match self {
-            PageSize::Uniform(page) => return *page,
+            PageSize::Uniform(page) => *page,
             PageSize::Heterogeneous(pages) => {
                 let mut cur_address = 0;
                 for page in pages {
@@ -112,7 +112,7 @@ impl PageSize {
                     }
                     cur_address += page;
                 }
-                return *pages.last().unwrap_or(&0u64);
+                *pages.last().unwrap_or(&0u64)
             }
         }
     }

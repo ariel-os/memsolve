@@ -5,16 +5,17 @@
 use crate::chip::Chip;
 #[cfg(feature = "uom")]
 use crate::information::Information;
-#[cfg(feature = "serde")]
-use crate::information::deser_option_information;
-#[cfg(feature = "serde")]
-use serde::Deserialize;
 use thiserror::Error;
 #[cfg(feature = "uom")]
 use uom::si::information::byte;
 
-/// A Memory section.
+#[cfg(feature = "serde")]
+use crate::information::deser_option_information;
+#[cfg(feature = "serde")]
+use serde::Deserialize;
+
 #[derive(Debug, Clone, PartialEq)]
+#[cfg(feature = "serde")]
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
 pub(crate) struct SerdeSection {
@@ -39,6 +40,7 @@ pub(crate) struct SerdeSection {
     pub(crate) linker_name: Option<String>,
 }
 
+#[cfg(feature = "serde")]
 impl From<SerdeSection> for Section<()> {
     fn from(value: SerdeSection) -> Self {
         Self {
@@ -71,6 +73,7 @@ pub struct Section<MetaData: Clone> {
     pub(crate) metadata: MetaData,
 }
 
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for Section<()> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where

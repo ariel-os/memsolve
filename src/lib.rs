@@ -78,6 +78,7 @@ use crate::layout::{Layout, ResolvedLayout};
 use crate::section::{ResolvedSection, Section};
 use crate::solver::{solve, solve_free};
 
+#[cfg(feature = "serde")]
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Deserialize))]
 #[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
@@ -87,6 +88,7 @@ struct SerdeMemory {
     layout: layout::SerdeLayout,
 }
 
+#[cfg(feature = "serde")]
 impl From<SerdeMemory> for Memory<()> {
     fn from(value: SerdeMemory) -> Self {
         Memory {
@@ -103,6 +105,7 @@ pub struct Memory<MetaData: Clone> {
     layout: Layout<MetaData>,
 }
 
+#[cfg(feature = "serde")]
 impl<'de> Deserialize<'de> for Memory<()> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
