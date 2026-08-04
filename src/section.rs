@@ -11,32 +11,26 @@ use uom::si::information::byte;
 
 #[cfg(feature = "serde")]
 use crate::information::deser_option_information;
-#[cfg(feature = "serde")]
-use serde::Deserialize;
 
-#[derive(Debug, Clone, PartialEq)]
 #[cfg(feature = "serde")]
-#[cfg_attr(feature = "serde", derive(Deserialize))]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct SerdeSection {
     /// Name of this section
     pub name: String,
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[serde(default)]
     pub(crate) boot: bool,
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[serde(default)]
     pub(crate) maximize: bool,
     pub(crate) pages: Option<u64>,
     /// The size of the section in bytes
-    #[cfg_attr(
-        feature = "serde",
-        serde(default, deserialize_with = "deser_option_information")
-    )]
+    #[serde(default, deserialize_with = "deser_option_information")]
     pub(crate) size: Option<u64>,
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[serde(default)]
     pub(crate) address: Option<u64>,
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[serde(default)]
     pub(crate) relative_pages: i64,
-    #[cfg_attr(feature = "serde", serde(default))]
+    #[serde(default)]
     pub(crate) linker_name: Option<String>,
 }
 
@@ -74,7 +68,7 @@ pub struct Section<MetaData: Clone> {
 }
 
 #[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for Section<()> {
+impl<'de> serde::Deserialize<'de> for Section<()> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,

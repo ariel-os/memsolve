@@ -1,14 +1,11 @@
 //! Memory layout description.
-#[cfg(feature = "serde")]
-use serde::Deserialize;
 use std::ops::{Deref, DerefMut, Index};
 
 use crate::section::{ResolvedSection, Section};
 
 #[cfg(feature = "serde")]
-#[derive(Debug, PartialEq, Clone)]
-#[cfg_attr(feature = "serde", derive(Deserialize))]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[derive(Debug, PartialEq, Clone, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct SerdeLayout {
     sections: Vec<super::section::SerdeSection>,
 }
@@ -27,7 +24,7 @@ pub struct Layout<MetaData: Clone> {
 }
 
 #[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for Layout<()> {
+impl<'de> serde::Deserialize<'de> for Layout<()> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,

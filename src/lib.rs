@@ -59,14 +59,12 @@
 #![warn(missing_docs)]
 
 use itertools::Itertools as _;
-#[cfg(feature = "serde")]
-use serde::Deserialize;
 use thiserror::Error;
 
 mod bin;
 pub mod chip;
 #[cfg(feature = "esp")]
-mod esp;
+pub mod esp;
 mod information;
 pub mod layout;
 pub mod section;
@@ -79,9 +77,8 @@ use crate::section::{ResolvedSection, Section};
 use crate::solver::{solve, solve_free};
 
 #[cfg(feature = "serde")]
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Deserialize))]
-#[cfg_attr(feature = "serde", serde(deny_unknown_fields))]
+#[derive(Debug, Clone, PartialEq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 struct SerdeMemory {
     chip: Chip,
     #[cfg_attr(feature = "serde", serde(flatten))]
@@ -106,7 +103,7 @@ pub struct Memory<MetaData: Clone> {
 }
 
 #[cfg(feature = "serde")]
-impl<'de> Deserialize<'de> for Memory<()> {
+impl<'de> serde::Deserialize<'de> for Memory<()> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
