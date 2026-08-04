@@ -1,3 +1,4 @@
+//! Support for ESP32 partition table generation.
 use esp_idf_part::{Flags, Partition, PartitionTable, SubType, Type};
 
 use crate::{
@@ -6,16 +7,26 @@ use crate::{
     section::{ResolvedSection, Section},
 };
 
+/// A section with ESP32 metadata.
 pub type EspSection = Section<EspMetaData>;
+/// A layout with ESP32 metadata in the sections.
+pub type EspLayout = Layout<EspMetaData>;
+/// A memory with ESP32 metadata in the sections.
+pub type EspMemory = Memory<EspMetaData>;
 
+/// ESP32 partition metadata.
 #[derive(Clone, Debug)]
 pub struct EspMetaData {
+    /// The ESP32 partition type.
     pub partition_type: esp_idf_part::Type,
+    /// The ESP32 partition subtype.
     pub partition_subtype: esp_idf_part::SubType,
+    /// The ESP32 partition flags.
     pub flags: esp_idf_part::Flags,
 }
 
 impl EspMetaData {
+    /// Creates new partition metadata
     pub fn new(partition_type: Type, partition_subtype: SubType, flags: Flags) -> Self {
         Self {
             partition_type,
@@ -24,6 +35,7 @@ impl EspMetaData {
         }
     }
 
+    /// Set the flags on the metadata.
     pub fn set_flags(&mut self, flags: Flags) {
         self.flags = flags;
     }
@@ -45,7 +57,7 @@ impl Memory<()> {
     ///
     /// Panics when the layout in the memory contains sections
     #[must_use]
-    pub fn with_esp_metadata(self) -> Memory<EspMetaData> {
+    pub fn with_esp_metadata(self) -> EspMemory {
         Memory {
             chip: self.chip,
             layout: self.layout.with_esp_metadata(),
@@ -60,7 +72,7 @@ impl Layout<()> {
     ///
     /// Panics when the layout contains sections
     #[must_use]
-    pub fn with_esp_metadata(self) -> Layout<EspMetaData> {
+    pub fn with_esp_metadata(self) -> EspLayout {
         assert!(self.sections.is_empty());
 
         Layout::empty()
