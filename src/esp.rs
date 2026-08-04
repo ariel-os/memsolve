@@ -37,8 +37,10 @@ impl EspMetaData {
     }
 
     /// Set the flags on the metadata.
-    pub fn set_flags(&mut self, flags: Flags) {
+    #[must_use]
+    pub fn set_flags(mut self, flags: Flags) -> Self {
         self.flags = flags;
+        self
     }
 }
 
@@ -84,7 +86,7 @@ impl Section<EspMetaData> {
     /// set ESP partition flags on this section.
     #[must_use]
     pub fn set_esp_flags(mut self, flags: Flags) -> Section<EspMetaData> {
-        self.metadata.set_flags(flags);
+        self.metadata = self.metadata.set_flags(flags);
         self
     }
 }
