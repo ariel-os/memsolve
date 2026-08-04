@@ -438,4 +438,27 @@ mod tests {
         assert_eq!(section.pages, Some(1));
         assert_eq!(section.size, Some(100));
     }
+
+    #[test]
+    fn page_vs_bytes() {
+        let section = Section::new("t")
+            .unwrap()
+            .set_address(0)
+            .set_size(10)
+            .set_pages(2);
+        let chip = Chip::new(10, 0, 20).unwrap();
+        let (pages, size) = section.resolve_page_and_size(&chip).unwrap();
+        assert_eq!(pages, 2);
+        assert_eq!(size, 20);
+
+        let chip = Chip::new(2, 0, 20).unwrap();
+        let (pages, size) = section.resolve_page_and_size(&chip).unwrap();
+        assert_eq!(pages, 5);
+        assert_eq!(size, 10);
+
+        let chip = Chip::new(5, 0, 20).unwrap();
+        let (pages, size) = section.resolve_page_and_size(&chip).unwrap();
+        assert_eq!(pages, 2);
+        assert_eq!(size, 10);
+    }
 }
