@@ -1,9 +1,12 @@
 use esp_idf_part::{Flags, Partition, PartitionTable, SubType, Type};
 
 use crate::{
-    layout::ResolvedLayout,
+    Memory,
+    layout::{Layout, ResolvedLayout},
     section::{ResolvedSection, Section},
 };
+
+pub type EspSection = Section<EspMetaData>;
 
 #[derive(Clone, Debug)]
 pub struct EspMetaData {
@@ -29,13 +32,38 @@ impl EspMetaData {
 impl Section<()> {
     /// Add ESP partition data to this section.
     #[must_use]
-    pub fn add_esp_metadata(
-        self,
-        partition_type: Type,
-        subtype: impl Into<SubType>,
-    ) -> Section<EspMetaData> {
+    pub fn add_esp_metadata(self, partition_type: Type, subtype: impl Into<SubType>) -> EspSection {
         let metadata = EspMetaData::new(partition_type, subtype.into(), Flags::empty());
         self.replace_metadata(metadata)
+    }
+}
+
+impl Memory<()> {
+    /// Convert the memory to use [`EspMetaData`]
+    ///
+    /// # Panics
+    ///
+    /// Panics when the layout in the memory contains sections
+    #[must_use]
+    pub fn with_esp_metadata(self) -> Memory<EspMetaData> {
+        Memory {
+            chip: self.chip,
+            layout: self.layout.with_esp_metadata(),
+        }
+    }
+}
+
+impl Layout<()> {
+    /// Converts an empty layout to use [`EspMetaData`]
+    ///
+    /// # Panics
+    ///
+    /// Panics when the layout contains sections
+    #[must_use]
+    pub fn with_esp_metadata(self) -> Layout<EspMetaData> {
+        assert!(self.sections.is_empty());
+
+        Layout::empty()
     }
 }
 
