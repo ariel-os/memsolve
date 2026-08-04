@@ -23,7 +23,7 @@ impl From<SerdeLayout> for Layout<()> {
 /// List of sections for a requested layout.
 #[derive(Debug, PartialEq, Clone)]
 pub struct Layout<MetaData: Clone> {
-    sections: Vec<Section<MetaData>>,
+    pub(crate) sections: Vec<Section<MetaData>>,
 }
 
 #[cfg(feature = "serde")]
