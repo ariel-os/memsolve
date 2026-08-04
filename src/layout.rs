@@ -43,6 +43,12 @@ impl<MetaData: Clone> Layout<MetaData> {
         Self { sections }
     }
 
+    /// Create an empty set of sections.
+    #[must_use]
+    pub fn empty() -> Self {
+        Self::new(Vec::new())
+    }
+
     /// Extend the sections with a section.
     pub fn push(&mut self, section: Section<MetaData>) {
         self.sections.push(section);
@@ -112,9 +118,7 @@ impl<MetaData: Clone> DerefMut for Layout<MetaData> {
 
 impl<MetaData: Clone> Default for Layout<MetaData> {
     fn default() -> Self {
-        Self {
-            sections: Vec::new(),
-        }
+        Self::empty()
     }
 }
 
