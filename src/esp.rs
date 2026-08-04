@@ -27,6 +27,7 @@ pub struct EspMetaData {
 
 impl EspMetaData {
     /// Creates new partition metadata
+    #[must_use]
     pub fn new(partition_type: Type, partition_subtype: SubType, flags: Flags) -> Self {
         Self {
             partition_type,
