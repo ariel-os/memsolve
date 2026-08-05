@@ -14,7 +14,7 @@ pub(super) enum SolverError {
     #[error("solver error: {0}")]
     Solver(#[from] microlp::Error),
     #[error("too many pages in section {0} for solver")]
-    TooManySectionPages(Section<()>),
+    TooManySectionPages(Box<Section<()>>),
     #[error("too many pages in the chip flash for solver")]
     TooManyFlashPages,
     #[error("no free regions")]
@@ -47,7 +47,7 @@ pub(crate) fn solve<'a, MetaData: Clone + 'a>(
                     .required_pages_in_bin(bin)?
                     .value_into()
                     .map_err(|_| {
-                        SolverError::TooManySectionPages(section.clone().clear_metadata())
+                        SolverError::TooManySectionPages(section.clone().clear_metadata().into())
                     })?,
             );
         }

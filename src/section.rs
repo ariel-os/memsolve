@@ -29,6 +29,8 @@ pub(crate) struct SerdeSection {
     #[serde(default)]
     pub(crate) address: Option<u64>,
     #[serde(default)]
+    pub(crate) address_align: Option<u64>,
+    #[serde(default)]
     pub(crate) relative_pages: i64,
     #[serde(default)]
     pub(crate) linker_name: Option<String>,
@@ -44,6 +46,7 @@ impl From<SerdeSection> for Section<()> {
             pages: value.pages,
             size: value.size,
             address: value.address,
+            address_align: value.address_align,
             relative_pages: value.relative_pages,
             linker_name: value.linker_name,
             metadata: (),
@@ -62,6 +65,7 @@ pub struct Section<MetaData: Clone> {
     /// The size of the section in bytes
     pub(crate) size: Option<u64>,
     pub(crate) address: Option<u64>,
+    pub(crate) address_align: Option<u64>,
     pub(crate) relative_pages: i64,
     pub(crate) linker_name: Option<String>,
     pub(crate) metadata: MetaData,
@@ -112,6 +116,7 @@ impl Section<()> {
             pages: None,
             size: None,
             address: None,
+            address_align: None,
             relative_pages: 0,
             linker_name: None,
             metadata: (),
@@ -232,6 +237,20 @@ impl<MetaData: Clone> Section<MetaData> {
         self
     }
 
+    /// Set the address alignment restrictions for this section.
+    #[must_use]
+    pub fn set_address_align(mut self, align: u64) -> Self {
+        self.address_align = Some(align);
+        self
+    }
+
+    /// Clear the address alignment restrictions for this section.
+    #[must_use]
+    pub fn clear_address_align(mut self) -> Self {
+        self.address_align = None;
+        self
+    }
+
     /// The section must be allocated at an exact address.
     #[must_use]
     pub fn is_fixed(&self) -> bool {
@@ -338,6 +357,7 @@ impl<MetaData: Clone> Section<MetaData> {
             pages: self.pages,
             size: self.size,
             address: self.address,
+            address_align: self.address_align,
             relative_pages: self.relative_pages,
             linker_name: self.linker_name,
             metadata: data,
