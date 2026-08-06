@@ -21,6 +21,8 @@ pub(super) enum SolverError {
     NoAllocationRegions,
     #[error("section error: {0}")]
     SectionError(#[from] SectionError),
+    #[error("time exceeded")]
+    TimeExceeded,
 
     #[error("conversion from float to integer failed")]
     ConversionError,
@@ -31,104 +33,111 @@ pub(crate) fn solve<'a, MetaData: Clone + 'a>(
     sections: &(impl Iterator<Item = &'a Section<MetaData>> + Clone),
 ) -> Result<ResolvedLayout<MetaData>, SolverError> {
     let mut problem = Problem::new(OptimizationDirection::Minimize);
-    let num_bins = bins.len();
-    let largest_bin = bins.largest_bin().ok_or(SolverError::NoAllocationRegions)?;
+    let mut address_map = AddressMap::empty();
 
-    let mut variables = vec![vec![]; num_bins];
-
-    for (i, bin) in bins.iter().enumerate() {
-        let mut bin_constraint = LinearExpr::empty();
-        for section in sections.clone() {
-            let var = problem.add_binary_var(0.0);
-            variables[i].push(var);
-            bin_constraint.add(
-                var,
-                section
-                    .required_pages_in_bin(bin)?
-                    .value_into()
-                    .map_err(|_| {
-                        SolverError::TooManySectionPages(section.clone().clear_metadata().into())
-                    })?,
+    for section in sections.clone() {
+        let mut options = Vec::new();
+        if let Some(bin) = bins.first()
+            && section.boot
+        {
+            let var = problem.add_binary_var(into_f64(bin.start_address)?);
+            options.push(var);
+            let pages = section.required_pages_in_bin(bin).unwrap_or(0);
+            let size = pages * bin.page_size;
+            address_map.insert(
+                bin.start_address,
+                AddressOption::new(section, bin.start_address + size, pages, var),
             );
-        }
-        if bin == largest_bin {
-            problem.add_constraint(bin_constraint, ComparisonOp::Le, into_f64(bin.num_pages())?);
         } else {
-            let free_space = problem.add_integer_var(
-                1.0 * into_f64(i)?,
-                (
-                    0,
-                    i32::try_from(bin.num_pages()).map_err(|_| SolverError::TooManyFlashPages)?,
-                ),
-            );
-            bin_constraint.add(free_space, 1.0);
-            problem.add_constraint(
-                bin_constraint,
-                ComparisonOp::Eq,
-                bin.num_pages_f64().ok_or(SolverError::TooManyFlashPages)?,
-            );
-        }
-    }
-
-    // section can be only in a single bin
-    for (j, section) in sections.clone().enumerate() {
-        let mut section_constraint = LinearExpr::empty();
-        if section.boot {
-            section_constraint.add(variables[0][j], 1.0);
-        } else {
-            for (i, _) in bins.iter().enumerate() {
-                section_constraint.add(variables[i][j], 1.0);
-            }
-        }
-        problem.add_constraint(section_constraint, ComparisonOp::Eq, 1.0);
-    }
-
-    let solution = problem.solve()?;
-
-    let resolved: Vec<(&crate::bin::MemoryBin, Vec<&Section<_>>)> = bins
-        .iter()
-        .enumerate()
-        .map(|(i, bin)| {
-            let mut placed_sections: Vec<&Section<_>> = Vec::new();
-            for (j, section) in sections.clone().enumerate() {
-                if solution.var_value(variables[i][j]) > 0.0 {
-                    placed_sections.push(section);
+            for bin in bins.iter() {
+                let alignment = section.address_align.unwrap_or(bin.page_size);
+                let mut address_option = bin.start_address.next_multiple_of(alignment);
+                'inner: while address_option < bin.end_address {
+                    if bin.section_fits_at_address(address_option, section) {
+                        if section.address.is_some_and(|addr| addr != address_option) {
+                            continue 'inner;
+                        }
+                        let var = problem.add_binary_var(into_f64(address_option)?);
+                        options.push(var);
+                        let pages = section.required_pages_in_bin(bin).unwrap_or(0);
+                        let size = pages * bin.page_size;
+                        address_map.insert(
+                            address_option,
+                            AddressOption::new(section, address_option + size, pages, var),
+                        );
+                        address_option = (address_option + 1).next_multiple_of(alignment);
+                    } else {
+                        break 'inner;
+                    }
                 }
             }
-            placed_sections.sort_by(|a, b| {
-                if a.boot || b.boot {
-                    b.boot.cmp(&a.boot)
-                } else {
-                    a.required_pages_in_bin(bin)
-                        .unwrap_or(0)
-                        .cmp(&b.required_pages_in_bin(bin).unwrap_or(0))
-                }
-            });
-            (bin, placed_sections)
-        })
-        .collect();
-    let resolved: Vec<_> = resolved
-        .iter()
-        .flat_map(|(bin, sections)| {
-            sections
+        }
+
+        // Section must be allocated at exactly 1 address
+        let mut expr = LinearExpr::empty();
+        for var in options {
+            expr.add(var, 1.0);
+        }
+        problem.add_constraint(expr, ComparisonOp::Eq, 1.0);
+    }
+
+    assert!(address_map.is_sorted_by_key(|s| s.address));
+
+    for address in address_map.iter() {
+        // Only 1 section per address
+        address.restrict_to_section(&mut problem);
+
+        for allocation in &address.allocations {
+            // Checks which other potential allocations clash with this one and constrains the solver
+            // on this
+            let expr_components = address_map
                 .iter()
-                .scan(bin.start_address, |next_address, section| {
-                    let set_pages = section.required_pages_in_bin(bin).unwrap_or(0);
-                    let r = ResolvedSection::new(
-                        section.name.clone(),
-                        set_pages,
-                        bin.page_size * set_pages,
-                        *next_address,
-                        section.linker_name.clone(),
-                        section.metadata.clone(),
-                    );
-                    *next_address += bin.page_size * set_pages;
-                    Some(r)
+                .filter_map(|a| {
+                    if a.within_section(address.address, allocation) {
+                        return Some(a.allocations.iter().filter_map(|o| {
+                            if std::ptr::eq(o.section, allocation.section) {
+                                None
+                            } else {
+                                Some((o.var, 1.0))
+                            }
+                        }));
+                    }
+                    None
                 })
-        })
-        .collect();
+                .flatten();
+            let elements = expr_components.clone().count();
+            if elements > 0 {
+                let constraint = expr_components
+                    .into_iter()
+                    .chain([(allocation.var, into_f64(elements + 1)?)]);
+                problem.add_constraint(constraint, ComparisonOp::Le, into_f64(elements + 1)?);
+            }
+        }
+    }
 
-    Ok(resolved.into())
+    let SolveOutcome::Solution(solution) = problem.solve()? else {
+        return Err(SolverError::TimeExceeded);
+    };
+
+    let resolved = address_map.iter().flat_map(|address| {
+        address.allocations.iter().filter_map(|option| {
+            if solution.var_value(option.var) > 0.0 {
+                let section = option.section;
+                Some(ResolvedSection::new(
+                    section.name.clone(),
+                    option.pages,
+                    option.end_address.saturating_sub(address.address),
+                    address.address,
+                    section.linker_name.clone(),
+                    section.metadata.clone(),
+                ))
+            } else {
+                None
+            }
+        })
+    });
+
+    Ok(resolved.collect::<Vec<_>>().into())
 }
 
 pub(crate) fn solve_free<'a, MetaData: Clone + 'a>(
@@ -195,6 +204,100 @@ fn into_f64(value: impl ValueInto<f64>) -> Result<f64, SolverError> {
     value
         .value_into()
         .map_err(|_| SolverError::TooManyFlashPages)
+}
+
+struct AddressMap<'a, MetaData: Clone>(Vec<AddressAlloc<'a, MetaData>>);
+
+impl<'a, MetaData: Clone> AddressMap<'a, MetaData> {
+    fn empty() -> Self {
+        Self(Vec::new())
+    }
+
+    fn address_sort(&mut self) {
+        self.sort_by_key(|element| element.address);
+    }
+
+    fn insert(&mut self, address: u64, option: AddressOption<'a, MetaData>) {
+        let element = self.iter_mut().find(|e| e.address == address);
+        let element = match element {
+            Some(e) => e,
+            None => self.0.insert_mut(0, AddressAlloc::empty(address)),
+        };
+        element.extend(option);
+        self.address_sort();
+    }
+}
+
+impl<'a, MetaData: Clone> std::ops::Deref for AddressMap<'a, MetaData> {
+    type Target = Vec<AddressAlloc<'a, MetaData>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<MetaData: Clone> std::ops::DerefMut for AddressMap<'_, MetaData> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+struct AddressAlloc<'a, MetaData: Clone> {
+    address: u64,
+    allocations: Vec<AddressOption<'a, MetaData>>,
+}
+
+impl<'a, MetaData: Clone> AddressAlloc<'a, MetaData> {
+    fn empty(address: u64) -> Self {
+        Self {
+            address,
+            allocations: Vec::new(),
+        }
+    }
+
+    fn extend(&mut self, option: AddressOption<'a, MetaData>) {
+        self.allocations.push(option);
+    }
+
+    /// returns true if this allocation is within the section if that section is allocated at
+    /// the address
+    fn within_section(&self, address: u64, option: &AddressOption<'a, MetaData>) -> bool {
+        self.address > address && self.address < option.end_address
+    }
+
+    fn restrict_to_section(&self, problem: &mut microlp::Problem) {
+        if self.allocations.len() > 1 {
+            problem.add_constraint(
+                self.allocations.iter().map(|a| (a.var, 1.0)),
+                ComparisonOp::Le,
+                1.0,
+            );
+        }
+    }
+}
+
+/// A location where a section could be allocated at
+struct AddressOption<'a, MetaData: Clone> {
+    section: &'a Section<MetaData>,
+    end_address: u64,
+    pages: u64,
+    var: microlp::Variable,
+}
+
+impl<'a, MetaData: Clone> AddressOption<'a, MetaData> {
+    fn new(
+        section: &'a Section<MetaData>,
+        end_address: u64,
+        pages: u64,
+        var: microlp::Variable,
+    ) -> Self {
+        Self {
+            section,
+            end_address,
+            pages,
+            var,
+        }
+    }
 }
 
 #[cfg(test)]
