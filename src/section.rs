@@ -82,7 +82,7 @@ impl<'de> serde::Deserialize<'de> for Section<()> {
 }
 
 /// Errors related to sections
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Clone, Debug, PartialEq)]
 pub enum SectionError {
     /// Section name cannot be used in linker scripts.
     #[error("incorrect section name")]

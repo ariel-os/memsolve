@@ -318,8 +318,8 @@ impl<MetaData: Clone> Memory<MetaData> {
             let res = solve(&bins, &maxed_sections.iter());
             if let Ok(resolved) = res {
                 break resolved;
-            } else if let Err(e) = res
-                && matches!(e, solver::SolverError::Solver(microlp::Error::Infeasible))
+            } else if let Err(e) = res.clone()
+                && !matches!(e, solver::SolverError::Solver(microlp::Error::Infeasible))
             {
                 return Err(e.into());
             }
