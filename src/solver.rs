@@ -178,7 +178,7 @@ pub(crate) fn solve_free<'a, MetaData: Clone + 'a>(
     );
 
     // Build the relative page size constraint between every section
-    for ((i, sec1), (j, sec2)) in sections.clone().enumerate().tuple_combinations() {
+    for [(i, sec1), (j, sec2)] in sections.clone().enumerate().array_combinations() {
         let diff = sec1.relative_pages - sec2.relative_pages;
         let mut relative_constraint = LinearExpr::empty();
         relative_constraint.add(variables[i], 1.0);
