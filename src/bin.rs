@@ -1,5 +1,6 @@
-use conv::ValueInto;
 use std::ops::Deref;
+
+use crate::section::Section;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Bin {
@@ -13,10 +14,6 @@ impl Bin {
 
     pub(crate) fn num_pages(&self) -> u64 {
         self.bins.iter().fold(0, |acc, b| acc + b.num_pages())
-    }
-
-    pub(crate) fn largest_bin(&self) -> Option<&MemoryBin> {
-        self.iter().max_by_key(|b| b.num_pages())
     }
 }
 
@@ -32,8 +29,34 @@ impl MemoryBin {
         (self.end_address - self.start_address) / self.page_size
     }
 
-    pub(crate) fn num_pages_f64(&self) -> Option<f64> {
-        self.num_pages().value_into().ok()
+    pub(crate) fn space_until_end(&self, address: u64) -> u64 {
+        if address > self.end_address || address < self.start_address {
+            return 0;
+        }
+        self.end_address.saturating_sub(address)
+    }
+
+    pub(crate) fn pages_until_end(&self, address: u64) -> u64 {
+        let space = self.space_until_end(address);
+        space.strict_div(self.page_size)
+    }
+
+    pub(crate) fn section_fits_at_address<MetaData: Clone>(
+        &self,
+        address: u64,
+        section: &Section<MetaData>,
+    ) -> bool {
+        if let Some(page_count) = section.pages
+            && page_count > self.pages_until_end(address)
+        {
+            false
+        } else if let Some(size) = section.size
+            && size > self.space_until_end(address)
+        {
+            false
+        } else {
+            true
+        }
     }
 }
 
