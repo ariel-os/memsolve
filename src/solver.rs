@@ -6,7 +6,7 @@ use crate::{
 };
 use conv::{ApproxInto, ValueInto};
 use itertools::Itertools;
-use microlp::{ComparisonOp, LinearExpr, OptimizationDirection, Problem};
+use microlp::{ComparisonOp, LinearExpr, OptimizationDirection, Problem, SolveOutcome};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -176,6 +176,9 @@ pub(crate) fn solve_free<'a, MetaData: Clone + 'a>(
         problem.add_constraint(relative_constraint, ComparisonOp::Eq, into_f64(diff)?);
     }
     let solution = problem.solve()?;
+    let SolveOutcome::Solution(solution) = solution else {
+        return Err(SolverError::TimeExceeded);
+    };
 
     sections
         .clone()
