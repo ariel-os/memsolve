@@ -151,6 +151,7 @@ mod tests {
         let factory = Section::new("factory")
             .unwrap()
             .set_size(1024 * 1024)
+            .set_address_align(64 * 1024)
             .add_esp_metadata(Type::App, AppType::Factory);
 
         let chip = Chip::new(512, 0, 2048 * 1048).unwrap();
