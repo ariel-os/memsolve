@@ -127,9 +127,39 @@ pub enum MemoryError {
     #[error("unresolvable layout")]
     UnresolvableLayout,
 
-    /// Address is too large to represent in the solver
-    #[error("address too large for solver")]
+    /// Address is too large to represent in the solver.
+    #[error("address space too large for solver")]
     AddressTooLarge,
+
+    /// Time budget exceeded for solver.
+    #[error("time exceeded")]
+    TimeExceeded,
+
+    /// Section related error.
+    #[error("section error: {0}")]
+    SectionError(#[from] section::SectionError),
+
+    /// Section is too large for the solver to handle
+    #[error("too many pages in section {0} for solver")]
+    TooManySectionPages(Box<Section<()>>),
+}
+
+impl From<solver::SolverError> for MemoryError {
+    fn from(value: solver::SolverError) -> Self {
+        match value {
+            solver::SolverError::Solver(_) => MemoryError::UnresolvableLayout,
+            solver::SolverError::TooManySectionPages(section) => {
+                MemoryError::TooManySectionPages(section)
+            }
+            solver::SolverError::TooManyFlashPages => MemoryError::AddressTooLarge,
+            solver::SolverError::NoAllocationRegions => MemoryError::MemoryTooSmall,
+            solver::SolverError::SectionError(section_error) => {
+                MemoryError::SectionError(section_error)
+            }
+            solver::SolverError::TimeExceeded => MemoryError::TimeExceeded,
+            solver::SolverError::ConversionError => MemoryError::AddressTooLarge,
+        }
+    }
 }
 
 impl<MetaData: Clone> Memory<MetaData> {
@@ -284,10 +314,13 @@ impl<MetaData: Clone> Memory<MetaData> {
             };
             maxed_sections.extend(sections.clone().cloned());
 
-            let res =
-                solve(&bins, &maxed_sections.iter()).map_err(|_| MemoryError::UnresolvableLayout);
+            let res = solve(&bins, &maxed_sections.iter());
             if let Ok(resolved) = res {
                 break resolved;
+            } else if let Err(e) = res
+                && matches!(e, solver::SolverError::Solver(microlp::Error::Infeasible))
+            {
+                return Err(e.into());
             }
             free_pages = next_free_pages;
         };
