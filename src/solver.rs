@@ -33,6 +33,7 @@ pub(crate) fn solve<'a, MetaData: Clone + 'a>(
     sections: &(impl Iterator<Item = &'a Section<MetaData>> + Clone),
 ) -> Result<ResolvedLayout<MetaData>, SolverError> {
     let mut problem = Problem::new(OptimizationDirection::Minimize);
+    problem.set_time_limit(std::time::Duration::from_millis(100));
     let mut address_map = AddressMap::empty();
 
     for section in sections.clone() {
