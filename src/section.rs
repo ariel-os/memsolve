@@ -364,7 +364,9 @@ impl<MetaData: Clone> Section<MetaData> {
         }
     }
 
-    pub(crate) fn clear_metadata(self) -> Section<()> {
+    /// Remove the extra metadata from this section.
+    #[must_use]
+    pub fn clear_metadata(self) -> Section<()> {
         self.replace_metadata(())
     }
 }
