@@ -141,7 +141,7 @@ pub enum MemoryError {
 
     /// Section is too large for the solver to handle
     #[error("too many pages in section {0} for solver")]
-    TooManySectionPages(Box<Section<()>>),
+    TooManySectionPages(String),
 }
 
 impl From<solver::SolverError> for MemoryError {
@@ -151,13 +151,14 @@ impl From<solver::SolverError> for MemoryError {
             solver::SolverError::TooManySectionPages(section) => {
                 MemoryError::TooManySectionPages(section)
             }
-            solver::SolverError::TooManyFlashPages => MemoryError::AddressTooLarge,
+            solver::SolverError::TooManyFlashPages | solver::SolverError::ConversionError => {
+                MemoryError::AddressTooLarge
+            }
             solver::SolverError::NoAllocationRegions => MemoryError::MemoryTooSmall,
             solver::SolverError::SectionError(section_error) => {
                 MemoryError::SectionError(section_error)
             }
             solver::SolverError::TimeExceeded => MemoryError::TimeExceeded,
-            solver::SolverError::ConversionError => MemoryError::AddressTooLarge,
         }
     }
 }

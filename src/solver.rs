@@ -9,12 +9,12 @@ use itertools::Itertools;
 use microlp::{ComparisonOp, LinearExpr, OptimizationDirection, Problem, SolveOutcome};
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Clone, Debug, PartialEq)]
 pub(super) enum SolverError {
     #[error("solver error: {0}")]
     Solver(#[from] microlp::Error),
     #[error("too many pages in section {0} for solver")]
-    TooManySectionPages(Box<Section<()>>),
+    TooManySectionPages(String),
     #[error("too many pages in the chip flash for solver")]
     TooManyFlashPages,
     #[error("no free regions")]
