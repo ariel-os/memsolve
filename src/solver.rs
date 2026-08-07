@@ -13,8 +13,6 @@ use thiserror::Error;
 pub(super) enum SolverError {
     #[error("solver error: {0}")]
     Solver(#[from] microlp::Error),
-    #[error("too many pages in section {0} for solver")]
-    TooManySectionPages(String),
     #[error("too many pages in the chip flash for solver")]
     TooManyFlashPages,
     #[error("no free regions")]
@@ -35,6 +33,9 @@ pub(crate) fn solve<'a, MetaData: Clone + 'a>(
     let mut problem = Problem::new(OptimizationDirection::Minimize);
     problem.set_time_limit(std::time::Duration::from_millis(100));
     let mut address_map = AddressMap::empty();
+    if bins.is_empty() {
+        return Err(SolverError::NoAllocationRegions);
+    }
 
     for section in sections.clone() {
         let mut options = Vec::new();

@@ -138,19 +138,12 @@ pub enum MemoryError {
     /// Section related error.
     #[error("section error: {0}")]
     SectionError(#[from] section::SectionError),
-
-    /// Section is too large for the solver to handle
-    #[error("too many pages in section {0} for solver")]
-    TooManySectionPages(String),
 }
 
 impl From<solver::SolverError> for MemoryError {
     fn from(value: solver::SolverError) -> Self {
         match value {
             solver::SolverError::Solver(_) => MemoryError::UnresolvableLayout,
-            solver::SolverError::TooManySectionPages(section) => {
-                MemoryError::TooManySectionPages(section)
-            }
             solver::SolverError::TooManyFlashPages | solver::SolverError::ConversionError => {
                 MemoryError::AddressTooLarge
             }
