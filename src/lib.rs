@@ -455,4 +455,23 @@ mod tests {
         let err = memory.resolve_layout().unwrap_err();
         assert_eq!(err, MemoryError::MemoryTooSmall);
     }
+
+    #[test]
+    fn resolve_rp() {
+        let chip = crate::Chip::new(256, 0x1000_0000, 8192 * 256).unwrap();
+        let mut layout = Memory::new(chip);
+        layout.add_section(Section::new("BOOT2").unwrap().set_size(256).set_boot(true));
+        layout.add_section(
+            Section::new("FLASH")
+                .unwrap()
+                .set_maximize(true)
+                .set_address(0x1000_0100),
+        );
+        let resolved = layout.resolve_layout().unwrap();
+        let sec = &resolved[0];
+        assert_eq!(sec.size, 256);
+        let sec = &resolved[1];
+        assert_eq!(sec.address, 0x1000_0100);
+        assert_eq!(sec.size, 2_096_896);
+    }
 }
