@@ -5,7 +5,6 @@ use crate::{
     section::{ResolvedSection, Section, SectionError},
 };
 use conv::{ApproxInto, ValueInto};
-use itertools::Itertools;
 use microlp::{ComparisonOp, LinearExpr, OptimizationDirection, Problem, SolveOutcome};
 use thiserror::Error;
 
@@ -182,12 +181,15 @@ pub(crate) fn solve_free<'a, MetaData: Clone + 'a>(
     );
 
     // Build the relative page size constraint between every section
-    for [(i, sec1), (j, sec2)] in sections.clone().enumerate().array_combinations() {
-        let diff = sec1.relative_pages - sec2.relative_pages;
-        let mut relative_constraint = LinearExpr::empty();
-        relative_constraint.add(variables[i], 1.0);
-        relative_constraint.add(variables[j], -1.0);
-        problem.add_constraint(relative_constraint, ComparisonOp::Eq, into_f64(diff)?);
+    let mut section_iter = sections.clone().enumerate();
+    while let Some((i, sec1)) = section_iter.next() {
+        for (j, sec2) in section_iter.clone() {
+            let diff = sec1.relative_pages - sec2.relative_pages;
+            let mut relative_constraint = LinearExpr::empty();
+            relative_constraint.add(variables[i], 1.0);
+            relative_constraint.add(variables[j], -1.0);
+            problem.add_constraint(relative_constraint, ComparisonOp::Eq, into_f64(diff)?);
+        }
     }
     let solution = problem.solve()?;
     let SolveOutcome::Solution(solution) = solution else {
