@@ -53,22 +53,26 @@ pub(crate) fn solve<'a, MetaData: Clone + 'a>(
         } else {
             for bin in bins.iter() {
                 let alignment = section.address_align.unwrap_or(bin.page_size);
-                let mut address_option = bin.start_address.next_multiple_of(alignment);
-                'inner: while address_option < bin.end_address {
-                    if bin.section_fits_at_address(address_option, section) {
-                        if section.address.is_none_or(|addr| addr == address_option) {
-                            let var = problem.add_binary_var(into_f64(address_option)?);
-                            options.push(var);
-                            let pages = section.required_pages_in_bin(bin).unwrap_or(0);
-                            let size = pages * bin.page_size;
-                            address_map.insert(
-                                address_option,
-                                AddressOption::new(section, address_option + size, pages, var),
-                            );
-                        }
-                        address_option = (address_option + 1).next_multiple_of(alignment);
-                    } else {
-                        break 'inner;
+                let start = bin.start_address.next_multiple_of(alignment);
+                if !bin.contains(start) {
+                    continue;
+                }
+                for address in (start..bin.end_address).into_iter().step_by(
+                    alignment
+                        .try_into()
+                        .map_err(|_| SolverError::TooManyFlashPages)?,
+                ) {
+                    if !bin.section_fits_at_address(address, section) {
+                        break;
+                    } else if section.address.is_none_or(|addr| addr == address) {
+                        let var = problem.add_binary_var(into_f64(address)?);
+                        options.push(var);
+                        let pages = section.required_pages_in_bin(bin).unwrap_or(0);
+                        let size = pages * bin.page_size;
+                        address_map.insert(
+                            address,
+                            AddressOption::new(section, address + size, pages, var),
+                        );
                     }
                 }
             }
