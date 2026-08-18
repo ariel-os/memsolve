@@ -362,8 +362,6 @@ mod tests {
 
     #[test]
     fn solver() {
-        use itertools::Itertools;
-
         let chip = crate::Chip::new(1000, 0, 20000).unwrap();
 
         let mut memory = Memory::new(chip);
@@ -386,7 +384,7 @@ mod tests {
             .for_each(|s| memory.add_section(s));
         let resolved = memory.resolve_layout().unwrap();
 
-        for (prev, next) in resolved.iter().tuple_windows() {
+        for [prev, next] in resolved.array_windows() {
             // No overlap between sections
             assert!(prev.address + prev.size <= next.address);
         }
