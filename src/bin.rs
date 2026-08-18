@@ -30,7 +30,7 @@ impl MemoryBin {
     }
 
     pub(crate) fn space_until_end(&self, address: u64) -> u64 {
-        if address > self.end_address || address < self.start_address {
+        if !self.contains(address) {
             return 0;
         }
         self.end_address.saturating_sub(address)
@@ -57,6 +57,10 @@ impl MemoryBin {
         } else {
             true
         }
+    }
+
+    pub(crate) fn contains(&self, address: u64) -> bool {
+        address < self.end_address && address >= self.start_address
     }
 }
 
