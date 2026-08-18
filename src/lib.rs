@@ -60,7 +60,6 @@
 #![warn(clippy::pedantic)]
 #![warn(missing_docs)]
 
-use itertools::Itertools as _;
 use thiserror::Error;
 
 mod bin;
@@ -236,9 +235,8 @@ impl<MetaData: Clone> Memory<MetaData> {
         };
         Bin::new(
             fixed
-                .iter()
-                .tuple_windows()
-                .filter_map(|(s1, s2)| {
+                .array_windows()
+                .filter_map(|[s1, s2]| {
                     let space_between = s1.space_between(s2);
                     if space_between == 0 {
                         return None;
