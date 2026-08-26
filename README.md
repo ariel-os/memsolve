@@ -27,11 +27,10 @@ large as possible within the flash and the configuration section requires 3 page
 specific minimum size.
 
 ```rust
-use memsolve::{Memory, section::Section, chip::Chip, information::Information};
-use uom::si::information::{byte, kibibyte};
+use memsolve::{Memory, section::Section, chip::Chip};
 
 // Our example chip has 64 KiB Flash with 2048 byte pages
-let chip = Chip::new(Information::new::<byte>(2048), 0x800_000, Information::new::<kibibyte>(64))?;
+let chip = Chip::new(2048, 0x800_000, 64 * 1024)?;
 let mut memory = Memory::new(chip);
 
 // Add the application section
@@ -53,13 +52,12 @@ assert_eq!(layout[0].address, 0x800_000);
 assert_eq!(layout[0].pages, 29);
 assert_eq!(layout[1].address, 0x80E_800);
 assert_eq!(layout[1].pages, 3);
-
 ```
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbUB8Gwr6tJ_MbT1dfi11DK3cbZ_NiZtL6zPkbSkno8b3FDVVhZIKCZ0VtYmFzc3n2gmhtZW1zb2x2ZWUwLjEuMA
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjNhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbM9ykvfbauDAbHDBXSg6R44Qbpm0lVcj00iUb0IDM9JND2HVhZIKCZ0VtYmFzc3n2gmhtZW1zb2x2ZWUwLjIuMQ
  [__link0]: https://crates.io/crates/Embassy
- [__link1]: Ariel OS
- [__link2]: https://docs.rs/memsolve/0.1.0/memsolve/struct.Memory.html
- [__link3]: https://docs.rs/memsolve/0.1.0/memsolve/?search=chip::Chip
- [__link4]: https://docs.rs/memsolve/0.1.0/memsolve/?search=section::Section
+ [__link1]: https://ariel-os.org/
+ [__link2]: https://docs.rs/memsolve/0.2.1/memsolve/struct.Memory.html
+ [__link3]: https://docs.rs/memsolve/0.2.1/memsolve/?search=chip::Chip
+ [__link4]: https://docs.rs/memsolve/0.2.1/memsolve/?search=section::Section

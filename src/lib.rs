@@ -6,7 +6,7 @@
 //! describing the different requirements of these sections, whether thats a set number of pages or
 //! a minimal size, and uses a linear solver to resolve the layout into addresses for the flash
 //! layout. This layout can then be used as basis for the `memory.x` file  in projects such as
-//! [Embassy] or [Ariel OS]
+//! [Embassy] or [Ariel OS][ariel_os]
 //!
 //! # Overview
 //!
@@ -54,6 +54,8 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! [ariel_os]: https://ariel-os.org/
 
 #![warn(clippy::pedantic)]
 #![warn(missing_docs)]
