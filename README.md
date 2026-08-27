@@ -55,9 +55,9 @@ assert_eq!(layout[1].pages, 3);
 ```
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjNhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbM9ykvfbauDAbHDBXSg6R44Qbpm0lVcj00iUb0IDM9JND2HVhZIKCZ0VtYmFzc3n2gmhtZW1zb2x2ZWUwLjIuMQ
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbM9ykvfbauDAbHDBXSg6R44Qbpm0lVcj00iUb0IDM9JND2HVhZIKCZ0VtYmFzc3n2gmhtZW1zb2x2ZWUwLjIuMw
  [__link0]: https://crates.io/crates/Embassy
  [__link1]: https://ariel-os.org/
- [__link2]: https://docs.rs/memsolve/0.2.1/memsolve/struct.Memory.html
- [__link3]: https://docs.rs/memsolve/0.2.1/memsolve/?search=chip::Chip
- [__link4]: https://docs.rs/memsolve/0.2.1/memsolve/?search=section::Section
+ [__link2]: https://docs.rs/memsolve/0.2.3/memsolve/struct.Memory.html
+ [__link3]: https://docs.rs/memsolve/0.2.3/memsolve/?search=chip::Chip
+ [__link4]: https://docs.rs/memsolve/0.2.3/memsolve/?search=section::Section
