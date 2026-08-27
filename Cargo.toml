@@ -1,6 +1,6 @@
 [package]
 name = "memsolve"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 description = "ROM memory layout solver for linker script generation"
 homepage = "https://codeberg.org/bergzand/memsolve/"
