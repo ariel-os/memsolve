@@ -1,6 +1,6 @@
 [package]
 name = "memsolve"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2024"
 description = "ROM memory layout solver for linker script generation"
 homepage = "https://github.com/ariel-os/memsolve"

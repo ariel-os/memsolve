@@ -1,4 +1,4 @@
-# memsolve ![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue) [![memsolve on crates.io](https://img.shields.io/crates/v/memsolve)](https://crates.io/crates/memsolve) [![memsolve on docs.rs](https://docs.rs/memsolve/badge.svg)](https://docs.rs/memsolve) [![Source Code Repository](https://img.shields.io/badge/Code-On%20Codeberg-blue?logo=Codeberg)](https://codeberg.org/bergzand/memsolve/)
+# memsolve ![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue) [![memsolve on crates.io](https://img.shields.io/crates/v/memsolve)](https://crates.io/crates/memsolve) [![memsolve on docs.rs](https://docs.rs/memsolve/badge.svg)](https://docs.rs/memsolve) [![Source Code Repository](https://img.shields.io/badge/Code-On%20GitHub-blue?logo=GitHub)](https://github.com/ariel-os/memsolve)
 
 Memsolve is a crate to generate ROM Memory Layouts for microcontrollers and other embedded
 devices.
@@ -66,11 +66,11 @@ at your option.
 Copyright (C) 2026 Freie Universität Berlin, Koen Zandberg
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbVYCInZLP7Usb0xyGqYkHI-Ub4Dx8kfIJ8_4b-ENpTTGHXwBhZIKCZ0VtYmFzc3n2gmhtZW1zb2x2ZWUwLjIuMw
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbVYCInZLP7Usb0xyGqYkHI-Ub4Dx8kfIJ8_4b-ENpTTGHXwBhZIKCZ0VtYmFzc3n2gmhtZW1zb2x2ZWUwLjIuNA
  [__link0]: https://crates.io/crates/Embassy
  [__link1]: https://ariel-os.org/
- [__link2]: https://docs.rs/memsolve/0.2.3/memsolve/struct.Memory.html
- [__link3]: https://docs.rs/memsolve/0.2.3/memsolve/?search=chip::Chip
- [__link4]: https://docs.rs/memsolve/0.2.3/memsolve/?search=section::Section
+ [__link2]: https://docs.rs/memsolve/0.2.4/memsolve/struct.Memory.html
+ [__link3]: https://docs.rs/memsolve/0.2.4/memsolve/?search=chip::Chip
+ [__link4]: https://docs.rs/memsolve/0.2.4/memsolve/?search=section::Section
  [__link5]: ./LICENSE-APACHE
  [__link6]: ./LICENSE-MIT
