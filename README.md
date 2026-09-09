@@ -54,10 +54,23 @@ assert_eq!(layout[1].address, 0x80E_800);
 assert_eq!(layout[1].pages, 3);
 ```
 
+## Copyright and License
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbM9ykvfbauDAbHDBXSg6R44Qbpm0lVcj00iUb0IDM9JND2HVhZIKCZ0VtYmFzc3n2gmhtZW1zb2x2ZWUwLjIuMw
+Memsolve is licensed under either of
+
+* Apache License, Version 2.0 ([LICENSE-APACHE][__link5] or <https://www.apache.org/licenses/LICENSE-2.0>)
+* MIT license ([LICENSE-MIT][__link6] or <https://opensource.org/licenses/MIT>)
+
+at your option.
+
+Copyright (C) 2026 Freie Universität Berlin, Koen Zandberg
+
+
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbVYCInZLP7Usb0xyGqYkHI-Ub4Dx8kfIJ8_4b-ENpTTGHXwBhZIKCZ0VtYmFzc3n2gmhtZW1zb2x2ZWUwLjIuMw
  [__link0]: https://crates.io/crates/Embassy
  [__link1]: https://ariel-os.org/
  [__link2]: https://docs.rs/memsolve/0.2.3/memsolve/struct.Memory.html
  [__link3]: https://docs.rs/memsolve/0.2.3/memsolve/?search=chip::Chip
  [__link4]: https://docs.rs/memsolve/0.2.3/memsolve/?search=section::Section
+ [__link5]: ./LICENSE-APACHE
+ [__link6]: ./LICENSE-MIT
