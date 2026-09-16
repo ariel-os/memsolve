@@ -105,9 +105,8 @@ impl Section<()> {
     /// - [`SectionError::InvalidSectionName`]: when the `name` is not valid.
     pub fn new(name: impl Into<String>) -> Result<Self, SectionError> {
         let name = name.into();
-        if name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '_') {
-            return Err(SectionError::InvalidSectionName);
-        }
+
+        Self::check_valid_section_name(&name)?;
 
         Ok(Self {
             name,
@@ -121,6 +120,16 @@ impl Section<()> {
             linker_name: None,
             metadata: (),
         })
+    }
+
+    /// Check if `name` is a valid linker script section name.
+    ///
+    /// This is best effort for lack of exact spec.
+    fn check_valid_section_name(name: &str) -> Result<(), SectionError> {
+        if name.chars().any(|c| !c.is_ascii_alphanumeric() && c != '_') {
+            return Err(SectionError::InvalidSectionName);
+        }
+        Ok(())
     }
 }
 
@@ -269,6 +278,27 @@ impl<MetaData: Clone> Section<MetaData> {
         size.div_ceil(page_size.get::<byte>())
     }
 
+    /// Set the linker script name used for this section.
+    /// # Errors
+    ///
+    /// - [`SectionError::InvalidSectionName`]: when the `name` is not valid.
+    pub fn set_linker_name(mut self, name: impl Into<String>) -> Result<Self, SectionError> {
+        let name = name.into();
+
+        Section::<()>::check_valid_section_name(&name)?;
+
+        self.linker_name = Some(name);
+        Ok(self)
+    }
+
+    /// Get the currently used linker name for this section.
+    ///
+    /// Equals the section name if unset.
+    #[must_use]
+    fn linker_name(&self) -> String {
+        self.linker_name.as_ref().unwrap_or(&self.name).clone()
+    }
+
     /// The section location is fully defined
     #[must_use]
     pub fn is_resolved(&self) -> bool {
@@ -306,7 +336,7 @@ impl<MetaData: Clone> Section<MetaData> {
             pages,
             size,
             address,
-            linker_name: self.linker_name.as_ref().unwrap_or(&self.name).clone(),
+            linker_name: self.linker_name(),
             metadata: self.metadata.clone(),
         })
     }
