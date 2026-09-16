@@ -483,4 +483,20 @@ mod tests {
         assert_eq!(sec.address, 0x1000_0100);
         assert_eq!(sec.size, 2_096_896);
     }
+
+    #[test]
+    fn linker_name() {
+        let chip = crate::Chip::new(1, 0, 1).unwrap();
+
+        let mut memory = Memory::new(chip);
+        memory.add_section(
+            Section::new("test")
+                .unwrap()
+                .set_pages(1)
+                .set_linker_name("test_linker_name")
+                .unwrap(),
+        );
+        let resolved = memory.resolve_layout().unwrap();
+        assert_eq!(resolved[0].linker_name, "test_linker_name");
+    }
 }
