@@ -75,7 +75,6 @@ impl Layout<()> {
     ///
     /// Panics when the layout contains sections
     #[must_use]
-    #[allow(clippy::assert_is_empty)]
     pub fn with_esp_metadata(self) -> EspLayout {
         assert!(self.sections.is_empty());
 
