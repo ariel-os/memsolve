@@ -25,6 +25,7 @@ pub(super) enum SolverError {
     ConversionError,
 }
 
+#[allow(clippy::too_many_lines)]
 pub(crate) fn solve<'a, MetaData: Clone + 'a>(
     bins: &Bin,
     sections: &(impl Iterator<Item = &'a Section<MetaData>> + Clone),
