@@ -499,4 +499,27 @@ mod tests {
         let resolved = memory.resolve_layout().unwrap();
         assert_eq!(resolved[0].linker_name, "test_linker_name");
     }
+
+    #[test]
+    fn embassy_boot_layout() {
+        let chip = Chip::new(4096, 0, 1_048_576).unwrap();
+        let mut layout = Memory::new(chip);
+
+        layout.add_section(
+            Section::new("BOOTLOADER")
+                .unwrap()
+                .set_pages(6)
+                .set_boot(true),
+        );
+
+        layout.add_section(Section::new("BOOTLOADER_STATE").unwrap().set_pages(1));
+        layout.add_section(Section::new("ACTIVE").unwrap().set_maximize(true));
+        layout.add_section(
+            Section::new("DFU")
+                .unwrap()
+                .set_maximize(true)
+                .set_relative_pages(1),
+        );
+        assert!(layout.resolve_layout().is_ok())
+    }
 }
