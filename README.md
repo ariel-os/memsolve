@@ -66,11 +66,11 @@ at your option.
 Copyright (C) 2026 Freie Universität Berlin, Koen Zandberg
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbVYCInZLP7Usb0xyGqYkHI-Ub4Dx8kfIJ8_4b-ENpTTGHXwBhZIKCZ0VtYmFzc3n2gmhtZW1zb2x2ZWUwLjIuNA
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjNhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbVYCInZLP7Usb0xyGqYkHI-Ub4Dx8kfIJ8_4b-ENpTTGHXwBhZIKCZ0VtYmFzc3n2gmhtZW1zb2x2ZWUwLjMuMQ
  [__link0]: https://crates.io/crates/Embassy
  [__link1]: https://ariel-os.org/
- [__link2]: https://docs.rs/memsolve/0.2.4/memsolve/struct.Memory.html
- [__link3]: https://docs.rs/memsolve/0.2.4/memsolve/?search=chip::Chip
- [__link4]: https://docs.rs/memsolve/0.2.4/memsolve/?search=section::Section
+ [__link2]: https://docs.rs/memsolve/0.3.1/memsolve/struct.Memory.html
+ [__link3]: https://docs.rs/memsolve/0.3.1/memsolve/?search=chip::Chip
+ [__link4]: https://docs.rs/memsolve/0.3.1/memsolve/?search=section::Section
  [__link5]: ./LICENSE-APACHE
  [__link6]: ./LICENSE-MIT
