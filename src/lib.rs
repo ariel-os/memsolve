@@ -195,6 +195,7 @@ impl<MetaData: Clone> Memory<MetaData> {
     }
 
     fn memory_bins(&self) -> Bin {
+        #[derive(Debug)]
         struct FixedSection {
             start: u64,
             end: u64,
@@ -508,7 +509,7 @@ mod tests {
         layout.add_section(
             Section::new("BOOTLOADER")
                 .unwrap()
-                .set_pages(6)
+                .set_size(24 * 1024)
                 .set_boot(true),
         );
 
@@ -520,6 +521,10 @@ mod tests {
                 .set_maximize(true)
                 .set_relative_pages(1),
         );
-        assert!(layout.resolve_layout().is_ok())
+        let layout = layout.resolve_layout();
+        assert!(layout.is_ok());
+        let layout = layout.unwrap();
+        let ld = layout.into_memory();
+        println!("{}", ld.to_ldmemory());
     }
 }
