@@ -59,8 +59,10 @@ impl<MetaData: Clone> Layout<MetaData> {
         self.iter().filter(|s| s.needs_allocating())
     }
 
-    pub(crate) fn num_pages(&self) -> u64 {
-        self.iter().fold(0, |acc, s| acc + s.pages.unwrap_or(0))
+    /// Returns the number of pages that needs allocating
+    pub(crate) fn num_allocatable_section_pages(&self) -> u64 {
+        self.allocatable_sections()
+            .fold(0, |acc, s| acc + s.pages.unwrap_or(0))
     }
 
     pub(crate) fn num_bootable(&self) -> usize {

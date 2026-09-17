@@ -294,10 +294,11 @@ impl<MetaData: Clone> Memory<MetaData> {
         let sections = self.layout.allocatable_sections();
 
         let bin_pages = bins.num_pages();
-        let section_pages = self.layout.num_pages();
+        let section_pages = self.layout.num_allocatable_section_pages();
         if section_pages > bin_pages {
             return Err(MemoryError::MemoryTooSmall);
         }
+
         // overflow should not occur due to the above check
         let mut free_pages = bin_pages.wrapping_sub(section_pages);
         let maximized_sections = self.layout.maximizing_sections();
@@ -434,7 +435,6 @@ mod tests {
     #[test]
     fn min_byte_size() {
         let chip = crate::Chip::new(1, 0, 30).unwrap();
-
         let mut memory = Memory::new(chip);
         memory.add_section(Section::new("test").unwrap().set_size(20));
         let resolved = memory.resolve_layout().unwrap();
