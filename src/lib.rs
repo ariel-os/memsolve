@@ -294,10 +294,11 @@ impl<MetaData: Clone> Memory<MetaData> {
         let sections = self.layout.allocatable_sections();
 
         let bin_pages = bins.num_pages();
-        let section_pages = self.layout.num_pages();
+        let section_pages = self.layout.num_allocatable_section_pages();
         if section_pages > bin_pages {
             return Err(MemoryError::MemoryTooSmall);
         }
+
         // overflow should not occur due to the above check
         let mut free_pages = bin_pages.wrapping_sub(section_pages);
         let maximized_sections = self.layout.maximizing_sections();
@@ -434,7 +435,6 @@ mod tests {
     #[test]
     fn min_byte_size() {
         let chip = crate::Chip::new(1, 0, 30).unwrap();
-
         let mut memory = Memory::new(chip);
         memory.add_section(Section::new("test").unwrap().set_size(20));
         let resolved = memory.resolve_layout().unwrap();
@@ -498,5 +498,28 @@ mod tests {
         );
         let resolved = memory.resolve_layout().unwrap();
         assert_eq!(resolved[0].linker_name, "test_linker_name");
+    }
+
+    #[test]
+    fn embassy_boot_layout() {
+        let chip = Chip::new(4096, 0, 1_048_576).unwrap();
+        let mut layout = Memory::new(chip);
+
+        layout.add_section(
+            Section::new("BOOTLOADER")
+                .unwrap()
+                .set_pages(6)
+                .set_boot(true),
+        );
+
+        layout.add_section(Section::new("BOOTLOADER_STATE").unwrap().set_pages(1));
+        layout.add_section(Section::new("ACTIVE").unwrap().set_maximize(true));
+        layout.add_section(
+            Section::new("DFU")
+                .unwrap()
+                .set_maximize(true)
+                .set_relative_pages(1),
+        );
+        assert!(layout.resolve_layout().is_ok());
     }
 }

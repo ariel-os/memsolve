@@ -303,7 +303,7 @@ impl<MetaData: Clone> Section<MetaData> {
     #[must_use]
     pub fn is_resolved(&self) -> bool {
         let resolved_size = self.pages.is_some() || self.size.is_some();
-        self.address.is_some() && resolved_size && !self.maximize
+        self.is_fixed() && resolved_size && !self.maximize
     }
 
     /// Returns true if this section needs to be maximized.
@@ -315,7 +315,7 @@ impl<MetaData: Clone> Section<MetaData> {
     /// Returns true if this section is not at a fixed position or requires resizing.
     #[must_use]
     pub fn needs_allocating(&self) -> bool {
-        !self.maximize && self.address.is_none()
+        !self.needs_maximizing() && !self.is_fixed()
     }
 
     pub(crate) fn as_resolved(
@@ -325,9 +325,7 @@ impl<MetaData: Clone> Section<MetaData> {
         if !self.is_resolved() {
             return Err(SectionError::UnresolvedSection);
         }
-        let Some(address) = self.address else {
-            return Err(SectionError::UnresolvedSection);
-        };
+        let address = self.start_address(chip)?;
 
         let (pages, size) = self.resolve_page_and_size(chip)?;
 
@@ -341,6 +339,18 @@ impl<MetaData: Clone> Section<MetaData> {
         })
     }
 
+    pub(crate) fn start_address(&self, chip: &Chip) -> Result<u64, SectionError> {
+        let address = if self.boot {
+            chip.start_address()
+        } else {
+            let Some(address) = self.address else {
+                return Err(SectionError::UnresolvedSection);
+            };
+            address
+        };
+        Ok(address)
+    }
+
     pub(crate) fn required_pages(&self, page_size: u64) -> Result<u64, SectionError> {
         let page_required = self.pages.unwrap_or(0);
         let size_pages = self.size.map_or(0, |size| size.div_ceil(page_size));
@@ -352,9 +362,7 @@ impl<MetaData: Clone> Section<MetaData> {
     }
 
     fn resolve_page_and_size(&self, chip: &Chip) -> Result<(u64, u64), SectionError> {
-        let Some(address) = self.address else {
-            return Err(SectionError::UnresolvedSection);
-        };
+        let address = self.start_address(chip)?;
         let (pages, size) = match (self.pages, self.size) {
             (None, None) => return Err(SectionError::UnresolvedSection),
             (None, Some(size)) => (self.required_pages(chip.page_size(address))?, size),
