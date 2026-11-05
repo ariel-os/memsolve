@@ -294,7 +294,11 @@ impl<MetaData: Clone> Memory<MetaData> {
         let sections = self.layout.allocatable_sections();
 
         let bin_pages = bins.num_pages();
-        let section_pages = self.layout.num_allocatable_section_pages();
+        let page_size = match self.chip.page_size {
+            PageSize::Uniform(quantity) => quantity,
+            PageSize::Heterogeneous(_) => todo!(),
+        };
+        let section_pages = self.layout.num_allocatable_section_pages(page_size);
         if section_pages > bin_pages {
             return Err(MemoryError::MemoryTooSmall);
         }
@@ -508,7 +512,7 @@ mod tests {
         layout.add_section(
             Section::new("BOOTLOADER")
                 .unwrap()
-                .set_pages(6)
+                .set_pages(5)
                 .set_boot(true),
         );
 
@@ -521,5 +525,58 @@ mod tests {
                 .set_relative_pages(1),
         );
         assert!(layout.resolve_layout().is_ok());
+    }
+
+    #[test]
+    fn esp_boot_layout() {
+        use esp_idf_part::{AppType, DataType, Type};
+        let chip = Chip::new(0x1000, 0x9000, 1024 * 4096).unwrap();
+
+        // define NVM layout
+        let mut memory = Memory::new(chip);
+
+        memory.add_section(
+            Section::new("nvs")
+                .unwrap()
+                .set_size(0x6000)
+                .set_address(0x9000)
+                .add_esp_metadata(Type::Data, DataType::Nvs),
+        );
+        memory.add_section(
+            Section::new("phy_init")
+                .unwrap()
+                .set_size(0x1000)
+                .set_address(0xf000)
+                .add_esp_metadata(Type::Data, DataType::Phy),
+        );
+
+        // See https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/ota.html.
+        // Not using "factory" partition so this is more in line with the embassy boot a/b setup.
+        memory.add_section(
+            Section::new("ota_0")
+                .unwrap()
+                .set_maximize(true)
+                .set_address_align(0x10000)
+                .add_esp_metadata(Type::App, AppType::Ota_0),
+        );
+        memory.add_section(
+            Section::new("ota_1")
+                .unwrap()
+                .set_maximize(true)
+                .set_address_align(0x10000)
+                .add_esp_metadata(Type::App, AppType::Ota_1),
+        );
+        memory.add_section(
+            Section::new("otadata")
+                .unwrap()
+                // Upstream says "The OTA data partition is two flash sectors (0x2000 bytes) in
+                // size".
+                .set_size(0x2000)
+                // page aligned
+                .set_address_align(0x1000)
+                .add_esp_metadata(Type::Data, DataType::Ota),
+        );
+
+        let _ = memory.resolve_layout().unwrap();
     }
 }

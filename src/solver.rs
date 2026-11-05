@@ -88,35 +88,21 @@ pub(crate) fn solve<'a, MetaData: Clone + 'a>(
 
     assert!(address_map.is_sorted_by_key(|s| s.address));
 
-    for address in address_map.iter() {
-        // Only 1 section per address
-        address.restrict_to_section(&mut problem);
-
-        for allocation in &address.allocations {
-            // Checks which other potential allocations clash with this one and constrains the solver
-            // on this
-            let expr_components = address_map
-                .iter()
-                .filter_map(|a| {
-                    if a.within_section(address.address, allocation) {
-                        return Some(a.allocations.iter().filter_map(|o| {
-                            if std::ptr::eq(o.section, allocation.section) {
-                                None
-                            } else {
-                                Some((o.var, 1.0))
-                            }
-                        }));
-                    }
-                    None
-                })
-                .flatten();
-            let elements = expr_components.clone().count();
-            if elements > 0 {
-                let constraint = expr_components
-                    .into_iter()
-                    .chain([(allocation.var, into_f64(elements + 1)?)]);
-                problem.add_constraint(constraint, ComparisonOp::Le, into_f64(elements + 1)?);
-            }
+    // Non-overlap: for every candidate start address p, at most one option may cover p.
+    // (Any two overlapping intervals overlap at the start of one of them.)
+    for p in address_map.iter() {
+        let covering: Vec<_> = address_map
+            .iter()
+            .filter(|a| a.address <= p.address)
+            .flat_map(|a| {
+                a.allocations
+                    .iter()
+                    .filter(move |o| a.address == p.address || o.end_address > p.address)
+                    .map(|o| (o.var, 1.0))
+            })
+            .collect();
+        if covering.len() > 1 {
+            problem.add_constraint(covering, ComparisonOp::Le, 1.0);
         }
     }
 
@@ -265,22 +251,6 @@ impl<'a, MetaData: Clone> AddressAlloc<'a, MetaData> {
 
     fn extend(&mut self, option: AddressOption<'a, MetaData>) {
         self.allocations.push(option);
-    }
-
-    /// returns true if this allocation is within the section if that section is allocated at
-    /// the address
-    fn within_section(&self, address: u64, option: &AddressOption<'a, MetaData>) -> bool {
-        self.address > address && self.address < option.end_address
-    }
-
-    fn restrict_to_section(&self, problem: &mut microlp::Problem) {
-        if self.allocations.len() > 1 {
-            problem.add_constraint(
-                self.allocations.iter().map(|a| (a.var, 1.0)),
-                ComparisonOp::Le,
-                1.0,
-            );
-        }
     }
 }
 
