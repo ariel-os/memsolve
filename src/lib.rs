@@ -294,7 +294,11 @@ impl<MetaData: Clone> Memory<MetaData> {
         let sections = self.layout.allocatable_sections();
 
         let bin_pages = bins.num_pages();
-        let section_pages = self.layout.num_allocatable_section_pages();
+        let page_size = match self.chip.page_size {
+            PageSize::Uniform(quantity) => quantity,
+            PageSize::Heterogeneous(_) => todo!(),
+        };
+        let section_pages = self.layout.num_allocatable_section_pages(page_size);
         if section_pages > bin_pages {
             return Err(MemoryError::MemoryTooSmall);
         }
