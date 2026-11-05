@@ -508,7 +508,7 @@ mod tests {
         layout.add_section(
             Section::new("BOOTLOADER")
                 .unwrap()
-                .set_pages(6)
+                .set_pages(5)
                 .set_boot(true),
         );
 
