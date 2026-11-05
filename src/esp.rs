@@ -76,7 +76,7 @@ impl Layout<()> {
     /// Panics when the layout contains sections
     #[must_use]
     pub fn with_esp_metadata(self) -> EspLayout {
-        assert!(self.sections.is_empty());
+        assert_eq!(self.sections, [] as [Section<()>; 0]);
 
         Layout::empty()
     }
